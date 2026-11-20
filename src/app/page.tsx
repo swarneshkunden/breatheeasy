@@ -24,6 +24,8 @@ import { LivingSkyline } from "@/components/LivingSkyline";
 import { DayDial } from "@/components/DayDial";
 import { CitySearch } from "@/components/CitySearch";
 import { bestWindow, whatIfTotals } from "@/lib/presentation";
+import { useLocation } from "@/hooks/useLocation";
+import { formatLocationLabel } from "@/lib/location";
 
 const defaultProfile: HouseholdProfile = {
   members: ["kids", "adults"],
@@ -61,8 +63,18 @@ export default function Home() {
   const [streak, setStreak] = useState(4);
   const [toolkit, setToolkit] = useState<string[]>([]);
   const [scenarioActions, setScenarioActions] = useState(["metro", "purifier", "induction"]);
-  const [theme, setTheme] = useState<"morning" | "dusk">("dusk");
-  const [previewAqi, setPreviewAqi] = useState(demoAir.aqi);
+const [theme, setTheme] = useState<"morning" | "dusk">("dusk");
+const [previewAqi, setPreviewAqi] = useState(demoAir.aqi);
+
+const { requestLocation, setFollowing, following, error: locationError } = useLocation({
+  onChange: async (coords) => {
+    await fetchAir(coords.latitude, coords.longitude, true);
+    setAir((prev) => ({
+      ...prev,
+      city: formatLocationLabel(coords.latitude, coords.longitude),
+    }));
+  },
+});
 
   useEffect(() => {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
@@ -122,11 +134,7 @@ export default function Home() {
   }
 
   async function locate() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (position) => fetchAir(position.coords.latitude, position.coords.longitude),
-      () => setOffline(true),
-    );
+    requestLocation();
   }
 
   async function handleCitySelect(city: CityResult) {
@@ -271,6 +279,15 @@ export default function Home() {
             </div>
             <div className="location-tools">
               <button className="secondary location-button" onClick={locate}><Wind size={16} aria-hidden="true" />Use my location</button>
+              <button
+                className={`secondary location-button ${following ? "location-active" : ""}`}
+                aria-pressed={following}
+                onClick={() => setFollowing(!following)}
+              >
+                {following ? "Following location" : "Follow my location"}
+              </button>
+              {following && <span className="following-indicator">Following your location, updates when you move</span>}
+              {locationError && <span className="location-error" role="alert">{locationError}</span>}
               <CitySearch onSelect={handleCitySelect} />
             </div>
           </div>
@@ -292,7 +309,12 @@ export default function Home() {
           <div className="sky-preview">
             <div><p className="eyebrow">Feel the difference</p><p className="preview-description">Explore how the city changes as pollution rises.</p></div>
             <label className="sr-only" htmlFor="aqi-preview">Air quality preview</label>
-            <input id="aqi-preview" className="aqi-slider" type="range" min="20" max="400" step="1" value={previewAqi} aria-valuetext={`AQI ${previewAqi}, ${previewCategory.label}`} onChange={(event) => setPreviewAqi(Number(event.target.value))} />
+            <input id="aqi-preview" className="aqi-slider" type="range" min="20" max="400" step="1" value={previewAqi} aria-valuetext={`AQI ${previewAqi}, ${previewCategory.label}`} onChange={(event) => setPreviewAqi(Number(event.target.value))} onKeyDown={(event) => {
+              if (event.key === "Home") { event.preventDefault(); setPreviewAqi(20); }
+              else if (event.key === "End") { event.preventDefault(); setPreviewAqi(400); }
+              else if (event.key === "ArrowLeft") { event.preventDefault(); setPreviewAqi((prev) => Math.max(20, prev - 1)); }
+              else if (event.key === "ArrowRight") { event.preventDefault(); setPreviewAqi((prev) => Math.min(400, prev + 1)); }
+            }} />
             <p className="preview-reading">At this level, <strong>{previewAqi <= 50 ? "the skyline feels open and clear." : previewAqi <= 100 ? "the light softens around the rooftops." : previewAqi <= 150 ? "the far hills begin to fade." : previewAqi <= 200 ? "the distant city dissolves into haze." : "the skyline settles into a smoky veil."}</strong></p>
             <div className="range-labels"><span>Clear · 20</span><span>Heavy haze · 400</span></div>
             {previewAqi !== current.aqi && (

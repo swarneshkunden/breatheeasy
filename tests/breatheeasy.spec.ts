@@ -75,3 +75,48 @@ test("pledge creates a downloadable share card", async ({ page }) => {
   await page.getByRole("button", { name: "Add my family" }).click();
   await expect.poll(() => page.evaluate(() => (window as Window & { pledgeCardTriggered?: boolean }).pledgeCardTriggered)).toBe(true);
 });
+
+test("geolocation one-shot uses granted coordinates", async ({ context, page }) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 28.61, longitude: 77.21, accuracy: 10 });
+  const airCalls: string[] = [];
+  await context.route("**/api/air", (request) => {
+    airCalls.push(request.url());
+    return request.continue();
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Use my location" }).click();
+  await expect.poll(() => airCalls.length).toBeGreaterThanOrEqual(1);
+  await expect(page.getByText("Your location (28.61°N, 77.21°E)")).toBeVisible();
+});
+
+test("moving over 1 km triggers a refresh, under 1 km does not", async ({ context, page }) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 28.61, longitude: 77.21, accuracy: 10 });
+  const airCalls: string[] = [];
+  await context.route("**/api/air", (request) => {
+    airCalls.push(request.url());
+    return request.continue();
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Follow my location" }).click();
+  await expect.poll(() => airCalls.length).toBeGreaterThanOrEqual(1);
+  const baseline = airCalls.length;
+  // Move under 1 km: should not refetch.
+  await context.setGeolocation({ latitude: 28.6105, longitude: 77.2105, accuracy: 10 });
+  await page.waitForTimeout(1200);
+  expect(airCalls.length).toBe(baseline);
+  // Move over 1 km: should refetch.
+  await context.setGeolocation({ latitude: 28.63, longitude: 77.24, accuracy: 10 });
+  await expect.poll(() => airCalls.length).toBeGreaterThan(baseline);
+});
+
+test("denied location falls back to city search", async ({ context, page }) => {
+  await context.grantPermissions([]);
+  await context.setGeolocation({ latitude: 0, longitude: 0, accuracy: 10 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Use my location" }).click();
+  await expect(page.getByText(/location access is blocked/i)).toBeVisible();
+  await page.getByRole("button", { name: "Follow my location" }).click();
+  await expect(page.getByText(/location access is blocked/i)).toBeVisible();
+});
