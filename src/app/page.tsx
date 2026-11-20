@@ -186,12 +186,53 @@ export default function Home() {
   }
 
   async function sharePledge() {
-    const text = `My BreatheEasy clean air pledge: aim to avoid 1 kg of weekly transport emissions and protect our neighborhood.`;
-    if (navigator.share) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1080;
+    canvas.height = 1080;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.fillStyle = "#FBF8F2";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = "#DDD5C6";
+    context.lineWidth = 2;
+    context.strokeRect(48, 48, 984, 984);
+    context.fillStyle = "#23291F";
+    context.font = "700 64px Georgia";
+    context.fillText("Clean Air Pledge", 104, 180);
+    context.font = "500 38px Georgia";
+    context.fillText("A calmer week, one choice at a time.", 104, 240);
+    context.fillStyle = "#4F6F58";
+    context.font = "700 164px Georgia";
+    context.fillText(`${whatIfTotals(scenarioActions).co2AvoidedG * 7}`, 104, 520);
+    context.fillStyle = "#23291F";
+    context.font = "600 34px sans-serif";
+    context.fillText("grams of CO₂ avoided this week*", 104, 570);
+    context.font = "500 28px sans-serif";
+    context.fillStyle = "#5B6155";
+    context.fillText("Carpool day  ·  No burning  ·  Dust control", 104, 690);
+    context.fillText("School activity  ·  BreatheEasy", 104, 738);
+    context.font = "20px sans-serif";
+    context.fillText("*Approximate planning estimate, not a lifecycle assessment.", 104, 930);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    const text = "My BreatheEasy Clean Air Pledge: a lower-emission commute, cleaner indoor air, and neighborhood care.";
+    if (blob && navigator.share) {
+      const file = new File([blob], "breatheeasy-clean-air-pledge.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: "BreatheEasy Clean Air Pledge", text, files: [file] });
+        return;
+      }
       await navigator.share({ title: "BreatheEasy Clean Air Pledge", text });
-    } else {
-      await navigator.clipboard.writeText(text);
+      return;
     }
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "breatheeasy-clean-air-pledge.png";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+    await navigator.clipboard?.writeText(text);
   }
 
   const timeline = useMemo(() => current.hourly.slice(0, 24), [current]);
@@ -367,7 +408,11 @@ export default function Home() {
               <div className="ritual-title"><Leaf size={19} aria-hidden="true" /><span>Neighborhood pledge</span></div>
               <p className="pledge-count"><strong>{streak}</strong><span>day clean-air streak</span></p>
               <div className="streak-track" role="meter" aria-label="Clean-air streak progress" aria-valuemin={0} aria-valuemax={7} aria-valuenow={Math.min(streak, 7)} aria-valuetext={`${Math.min(streak, 7)} of 7 clean-air days`}><span style={{ width: `${Math.min(streak, 7) / 7 * 100}%` }} /></div>
-              <p>Carpool day, no burning, and a little care for the trees and streets.</p>
+              <ul className="pledge-checklist" aria-label="Clean air pledge checklist">
+                {["Carpool day", "No burning", "Tree & dust care", "School activity check"].map((item) => (
+                  <li key={item}><input type="checkbox" aria-label={item} />{item}</li>
+                ))}
+              </ul>
               <button className="secondary pledge-button" onClick={sharePledge}>Add my family</button>
             </article>
           </div>
