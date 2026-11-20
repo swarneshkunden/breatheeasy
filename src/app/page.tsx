@@ -435,7 +435,17 @@ export default function Home() {
             ].map(({ title, icon: Icon, tips }) => (
               <section className="advice-section" key={title}>
                 <div className="advice-heading"><Icon size={18} strokeWidth={1.7} aria-hidden="true" /><h3>{title}</h3></div>
-                {tips.map((tip) => <article className="advice-card" key={tip.title}><h4>{tip.title}</h4><p>{tip.detail}</p><span className="impact-pill">{tip.impact}</span></article>)}
+                {tips.map((tip) => (
+                  <article className="advice-card" key={tip.title}>
+                    <h4>{tip.title}</h4>
+                    <p>{tip.detail}</p>
+                    <span className="impact-pill">{tip.impact}</span>
+                    <details className="tip-calculation">
+                      <summary>How we calculated this</summary>
+                      <p>Planning estimate using the centralized emission factors and purifier assumptions. It is not a clinical or lifecycle measurement.</p>
+                    </details>
+                  </article>
+                ))}
               </section>
             ))}
           </div>
@@ -468,6 +478,11 @@ export default function Home() {
           </div>
           <details className="glass-card"><summary>Houseplant myths vs facts</summary><p>Plants add comfort but do not replace filtration or ventilation at pollution levels typical of severe smog.</p></details>
         </section>
+
+        <footer className="footer-notes">
+          <p><strong>General guidance only.</strong> This is not medical advice. If symptoms are severe or worsen, seek qualified medical care.</p>
+          <p><strong>Privacy.</strong> Location is rounded before server use. The household profile is stored only in this browser.</p>
+        </footer>
 
         {chatOpen && (
           <aside className="chat-panel" aria-label="BreatheEasy assistant">
