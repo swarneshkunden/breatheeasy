@@ -69,5 +69,8 @@ Work Package C status: COMPLETE (landing page `/`, app at `/app`, manifest/sitem
 - npm audit: 3 pre-existing dev-dep vulns; `npm audit fix --force` loosens vitest pin (conflicts with "keep stack fixed"). Needs a decision.
 - Lighthouse: not installed; needs `npm install lighthouse` (network) + dev server + Chrome run.
 
+### Known non-blockers (environmental, no code change)
+- `npm run dev` hydration-mismatch warning shows `bis_skin_checked="1"` attributes — injected by a browser extension (password manager) between SSR and hydration, not by our code. The server-rendered `LivingSkyline` is deterministic from props; build, lint, typecheck, tests all pass. Not present in production/Lighthouse.
+
 ### Next step
 Run the final audit loop (max 3 rounds), fix any real regressions, then give the final report with scorecard and exact commands to run/test/deploy.
