@@ -329,6 +329,20 @@ main {
 .preview-reading { grid-column: 2; margin: 0; color: var(--muted); font-size: 13px; }
 .preview-reading strong { color: var(--ink); font-weight: 600; }
 .range-labels { grid-column: 2; display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
+.text-reset {
+  grid-column: 2;
+  width: max-content;
+  min-height: 44px;
+  margin-top: 2px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .pollutant-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding-top: 18px; border-top: 1px solid var(--hairline); }
 .pollutant {
   min-width: 0;
