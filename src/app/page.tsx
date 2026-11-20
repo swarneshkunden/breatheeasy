@@ -19,8 +19,9 @@ import { demoAir } from "@/lib/air/demo";
 import { categorizeAqi, createRulePlan } from "@/lib/rules/engine";
 import { copy } from "@/lib/i18n";
 import { AirSnapshot, AdvicePlan, HouseholdProfile, Language } from "@/lib/types";
-import { exposureCigarettes, tripImpact } from "@/lib/impact/calculator";
+import { exposureCigarettes } from "@/lib/impact/calculator";
 import { LivingSkyline } from "@/components/LivingSkyline";
+import { bestWindow, whatIfTotals } from "@/lib/presentation";
 
 const defaultProfile: HouseholdProfile = {
   members: ["kids", "adults"],
@@ -95,12 +96,9 @@ export default function Home() {
   const cigarettes = exposureCigarettes(current.pm25);
   const previewCategory = categorizeAqi(previewAqi);
   const CategoryIcon = aqiIcons[previewCategory.tone] ?? Cloud;
-  const scenarioImpact = scenarioActions.includes("metro") ? tripImpact(5).co2AvoidedG : 0;
-  const cleanestHourIndex = current.hourly.reduce(
-    (bestIndex, hour, index, hours) => hour.aqi < hours[bestIndex].aqi ? index : bestIndex,
-    0,
-  );
-  const cleanestHour = current.hourly[cleanestHourIndex]?.time ?? "14:00";
+  const scenarioImpact = whatIfTotals(scenarioActions);
+  const cleanestWindow = bestWindow(current.hourly);
+  const cleanestHour = cleanestWindow?.hour.time ?? "14:00";
   const cleanestTime = cleanestHour.includes("T") ? cleanestHour.slice(11, 16) : cleanestHour.slice(0, 5);
   const dialColors: Record<string, string> = {
     good: "var(--aqi-good)",
@@ -302,43 +300,56 @@ export default function Home() {
             <div className="scenario-metrics">
               <article className="scenario-metric">
                 <span>Family indoor exposure</span>
-                <div className="metric-number">{scenarioActions.includes("purifier") ? "43" : "100"}<small>{scenarioActions.includes("purifier") ? "down 57%" : "starting point"}</small></div>
+                <div className="metric-number">{scenarioImpact.exposure}<small>{scenarioImpact.exposureReduction > 0 ? `down ${scenarioImpact.exposureReduction}%` : "starting point"}</small></div>
                 <div
                   className="exposure-track"
                   role="meter"
                   aria-label="Illustrative relative family indoor exposure"
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  aria-valuenow={scenarioActions.includes("purifier") ? 43 : 100}
-                  aria-valuetext={scenarioActions.includes("purifier") ? "43, down 57 percent" : "100, starting point"}
+                  aria-valuenow={scenarioImpact.exposure}
+                  aria-valuetext={`${scenarioImpact.exposure}, ${scenarioImpact.exposureReduction > 0 ? `down ${scenarioImpact.exposureReduction} percent` : "starting point"}`}
                 >
-                  <span style={{ width: scenarioActions.includes("purifier") ? "43%" : "100%" }} />
+                  <span style={{ width: `${scenarioImpact.exposure}%`, background: scenarioImpact.exposure <= 55 ? "var(--aqi-good)" : scenarioImpact.exposure <= 75 ? "var(--aqi-moderate)" : "var(--aqi-unhealthy)" }} />
                 </div>
                 <small className="metric-disclaimer">Illustrative relative estimate, not a sensor reading</small>
               </article>
               <article className="scenario-metric">
                 <span>CO₂ avoided today</span>
-                <div className="metric-number">{scenarioImpact} <small>g</small></div>
+                <div className="metric-number">{scenarioImpact.co2AvoidedG} <small>g</small></div>
                 <p>Approximate 5 km petrol-car-to-metro trip. Assumptions in “How we calculated this”.</p>
               </article>
             </div>
           </div>
           <div className="family-cards">
-            <article className="family-card">
-              <span className="family-avatar child" aria-hidden="true">C</span>
-              <div><h3>Children</h3><span>More sensitive to pollution</span></div>
-              <p>{current.aqi > 150 ? "Stay indoors today. Play in the filtered room and skip the school ground." : "Choose the cleaner forecast window for outdoor play."}</p>
-            </article>
-            <article className="family-card">
-              <span className="family-avatar elder" aria-hidden="true">E</span>
-              <div><h3>Older adults</h3><span>Extra care on hazy days</span></div>
-              <p>{current.aqi > 150 ? "Keep walks short and indoors during peak pollution. Use a fitted N95 if going out." : "A short walk in the cleaner hour is a gentler choice."}</p>
-            </article>
-            <article className="family-card">
-              <span className="family-avatar adults" aria-hidden="true">A</span>
-              <div><h3>Adults</h3><span>Healthy everyday habits</span></div>
-              <p>{current.aqi > 150 ? "Take the metro and avoid evening runs outdoors." : "Keep the lower-emission commute and ventilate when air improves."}</p>
-            </article>
+            {profile.members.length === 0 ? (
+              <article className="family-card family-empty">
+                <div><h3>Add family members</h3><span>Personal advice appears here</span></div>
+                <p>Choose who is at home so BreatheEasy can tailor the plan.</p>
+                <button className="secondary" onClick={() => setOnboarding(true)}>Add family</button>
+              </article>
+            ) : profile.members.map((member) => {
+              const labels: Record<HouseholdProfile["members"][number], { name: string; age: string; initial: string }> = {
+                kids: { name: "Child", age: "School-age", initial: "C" },
+                elderly: { name: "Older adult", age: "Extra care", initial: "E" },
+                pregnant: { name: "Pregnant member", age: "Extra care", initial: "P" },
+                respiratory: { name: "Asthma / respiratory", age: "Sensitive", initial: "R" },
+                adults: { name: "Healthy adult", age: "Everyday habits", initial: "A" },
+              };
+              const label = labels[member];
+              const verdict = member === "kids" || member === "respiratory" || member === "pregnant"
+                ? current.aqi > 150 ? "Stay indoors, play in a filtered room, and avoid the school ground." : "Choose the cleaner forecast window for gentle outdoor time."
+                : member === "elderly"
+                  ? current.aqi > 150 ? "Keep walks short and indoors at peak pollution. Use a fitted mask if going out." : "A short walk during the cleaner hour is the gentler choice."
+                  : current.aqi > 150 ? "Take the metro and avoid evening exercise outdoors." : "Keep the lower-emission commute and ventilate only in cleaner hours.";
+              return (
+                <article className="family-card" key={member}>
+                  <span className="family-avatar" aria-hidden="true">{label.initial}</span>
+                  <div><h3>{label.name}</h3><span>{label.age}</span>{plan.smartMode === "offline" && <small className="smart-badge">Smart Mode offline</small>}</div>
+                  <p>{verdict}</p>
+                </article>
+              );
+            })}
           </div>
         </section>
 

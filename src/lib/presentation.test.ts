@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bestWindow, dialSegmentGeometry, mixHex, skyColor, skyLayerMix, visibilityKm } from "./presentation";
+import { bestWindow, dialSegmentGeometry, mixHex, skyColor, skyLayerMix, visibilityKm, whatIfTotals } from "./presentation";
 
 describe("presentation calculations", () => {
   it("clamps sky color endpoints", () => {
@@ -38,5 +38,21 @@ describe("presentation calculations", () => {
     ];
     expect(bestWindow(hourly)?.hour.time).toBe("14:00");
     expect(bestWindow([])).toBeNull();
+  });
+
+  it("returns baseline totals with all toggles off", () => {
+    expect(whatIfTotals([])).toEqual({ exposure: 100, exposureReduction: 0, co2AvoidedG: 0 });
+  });
+
+  it("adds purifier and metro effects with all toggles on", () => {
+    expect(whatIfTotals(["metro", "purifier", "induction"])).toEqual({
+      exposure: 55,
+      exposureReduction: 45,
+      co2AvoidedG: 710,
+    });
+  });
+
+  it("does not add effects for unknown toggle ids", () => {
+    expect(whatIfTotals(["unknown"])).toEqual({ exposure: 100, exposureReduction: 0, co2AvoidedG: 0 });
   });
 });
