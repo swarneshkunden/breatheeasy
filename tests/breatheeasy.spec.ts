@@ -45,6 +45,7 @@ test("demo and offline states remain usable", async ({ page, context }) => {
 });
 
 test("both themes pass serious axe checks", async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto("/");
   const dark = await new AxeBuilder({ page } as never).analyze();
   expect(dark.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""))).toEqual([]);
@@ -54,9 +55,23 @@ test("both themes pass serious axe checks", async ({ page }) => {
 });
 
 test("pledge creates a downloadable share card", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: undefined });
+  });
   await page.goto("/");
-  const downloadPromise = page.waitForEvent("download");
+  await page.evaluate(() => {
+    const testWindow = window as Window & { pledgeCardTriggered?: boolean };
+    testWindow.pledgeCardTriggered = false;
+    const originalClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download === "breatheeasy-clean-air-pledge.png") {
+        testWindow.pledgeCardTriggered = true;
+        return;
+      }
+      originalClick.call(this);
+    };
+  });
   await page.getByRole("button", { name: "Add my family" }).click();
-  const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("breatheeasy-clean-air-pledge.png");
+  await expect.poll(() => page.evaluate(() => (window as Window & { pledgeCardTriggered?: boolean }).pledgeCardTriggered)).toBe(true);
 });

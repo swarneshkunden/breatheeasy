@@ -215,22 +215,18 @@ export default function Home() {
     context.fillText("*Approximate planning estimate, not a lifecycle assessment.", 104, 930);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     const text = "My BreatheEasy Clean Air Pledge: a lower-emission commute, cleaner indoor air, and neighborhood care.";
-    if (blob && navigator.share) {
+    if (blob && navigator.share && navigator.canShare) {
       const file = new File([blob], "breatheeasy-clean-air-pledge.png", { type: "image/png" });
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ title: "BreatheEasy Clean Air Pledge", text, files: [file] });
         return;
       }
-      await navigator.share({ title: "BreatheEasy Clean Air Pledge", text });
-      return;
     }
     if (blob) {
-      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = url;
+      link.href = canvas.toDataURL("image/png");
       link.download = "breatheeasy-clean-air-pledge.png";
       link.click();
-      URL.revokeObjectURL(url);
     }
     await navigator.clipboard?.writeText(text);
   }
@@ -418,12 +414,12 @@ export default function Home() {
           </div>
           <div className="timeline-label-row"><span>Today’s hourly air</span><span>Forecast AQI · lower is cleaner</span></div>
           <div className="timeline" role="group" aria-label="Hourly air quality forecast" tabIndex={0}>
-            {timeline.map((hour, index) => (
-              <motion.div className="timeline-hour" key={hour.time} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.018 }}>
+            {timeline.map((hour) => (
+              <div className="timeline-hour" key={hour.time}>
                 <span>{hour.time.slice(11, 16) || hour.time}</span>
                 <div className={`timeline-bar aqi-${categorizeAqi(hour.aqi).tone}`} style={{ height: `${Math.max(18, Math.min(100, hour.aqi / 4))}px` }} aria-hidden="true" />
                 <b>{hour.aqi}</b>
-              </motion.div>
+              </div>
             ))}
           </div>
           <div className="window-notes"><span><Sun size={16} aria-hidden="true" /> Best window: <strong>{cleanestTime}</strong></span><span><CloudFog size={16} aria-hidden="true" /> Toughest window: <strong>{current.hourly.reduce((worst, hour) => hour.aqi > worst.aqi ? hour : worst, current.hourly[0])?.time.slice(11, 16) || "08:00"}</strong></span></div>
