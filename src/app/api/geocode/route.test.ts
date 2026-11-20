@@ -16,7 +16,7 @@ afterEach(() => {
 
 describe("geocode route", () => {
   it("returns rounded results for a valid city", async () => {
-    const fetchMock = vi.fn(async (_url: string | URL) =>
+    const fetchMock = vi.fn<(url: string | URL) => Promise<Response>>(async () =>
       Response.json({
         results: [{ name: "New Delhi", admin1: "Delhi", country: "India", latitude: 28.6139, longitude: 77.209 }],
       }),

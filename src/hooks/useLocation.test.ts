@@ -124,7 +124,7 @@ describe("useLocation follow toggle", () => {
     act(() => {
       result.current.setFollowing(true);
     });
-    const watchSuccess = mockWatchPosition.mock.calls[0]?.[0] as unknown as (pos: GeolocationPosition) => void;
+    const watchSuccess = (mockWatchPosition.mock.calls as unknown as [[(pos: GeolocationPosition) => void]])[0]![0];
     expect(watchSuccess).toBeTypeOf("function");
     // first position establishes baseline
     act(() => fireSuccess(watchSuccess, 28.61, 77.21));

@@ -30,7 +30,7 @@ afterEach(() => {
 
 describe("air route", () => {
   it("returns parsed live air data with timezone offset", async () => {
-    const fetchMock = vi.fn(async (_url: string | URL) => Response.json(airPayload));
+    const fetchMock = vi.fn<(url: string | URL) => Promise<Response>>(async () => Response.json(airPayload));
     vi.stubGlobal("fetch", fetchMock);
     const result = await GET(request("28.61", "77.21", "192.0.2.1"));
     expect(result.status).toBe(200);
