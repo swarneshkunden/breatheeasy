@@ -18,10 +18,11 @@ import {
 import { demoAir } from "@/lib/air/demo";
 import { categorizeAqi, createRulePlan } from "@/lib/rules/engine";
 import { copy } from "@/lib/i18n";
-import { AirSnapshot, AdvicePlan, HouseholdProfile, Language } from "@/lib/types";
+import { AirSnapshot, AdvicePlan, CityResult, HouseholdProfile, Language } from "@/lib/types";
 import { exposureCigarettes } from "@/lib/impact/calculator";
 import { LivingSkyline } from "@/components/LivingSkyline";
 import { DayDial } from "@/components/DayDial";
+import { CitySearch } from "@/components/CitySearch";
 import { bestWindow, whatIfTotals } from "@/lib/presentation";
 
 const defaultProfile: HouseholdProfile = {
@@ -51,7 +52,6 @@ export default function Home() {
   const [profile, setProfile] = useState<HouseholdProfile>(defaultProfile);
   const [onboarding, setOnboarding] = useState(false);
   const [step, setStep] = useState(0);
-  const [city, setCity] = useState("");
   const [offline, setOffline] = useState(false);
   const [plan, setPlan] = useState<AdvicePlan>(() => createRulePlan(demoAir, defaultProfile));
   const [chatOpen, setChatOpen] = useState(false);
@@ -102,26 +102,35 @@ export default function Home() {
   const cleanestHour = cleanestWindow?.hour.time ?? "14:00";
   const cleanestTime = cleanestHour.includes("T") ? cleanestHour.slice(11, 16) : cleanestHour.slice(0, 5);
 
-  async function locate() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const result = await fetch("/api/air", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
-      });
-      if (result.ok) setAir(await result.json() as AirSnapshot);
-    }, () => setOffline(true));
+  const now = new Date();
+  const offsetHours = (current.utcOffsetSeconds ?? 0) / 3600;
+  const locationHour = ((now.getUTCHours() + offsetHours) % 24 + 24) % 24;
+
+  async function fetchAir(latitude: number, longitude: number, markLive = true) {
+    const lat = Math.round(latitude * 100) / 100;
+    const lon = Math.round(longitude * 100) / 100;
+    try {
+      setOffline(false);
+      const response = await fetch(`/api/air?lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lon))}`);
+      if (!response.ok) throw new Error("air unavailable");
+      const result = await response.json() as AirSnapshot;
+      setAir(result);
+      if (markLive) setDemo(false);
+    } catch {
+      setOffline(true);
+    }
   }
 
-  async function searchCity() {
-    if (city.trim().length < 2) return;
-    const response = await fetch(`/api/geocoding?q=${encodeURIComponent(city)}`);
-    if (!response.ok) return;
-    const results = await response.json() as Array<{ name: string; latitude: number; longitude: number }>;
-    if (!results[0]) return;
-    setDemo(false);
-    setAir({ ...demoAir, city: results[0].name, latitude: results[0].latitude, longitude: results[0].longitude, source: "live" });
+  async function locate() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => fetchAir(position.coords.latitude, position.coords.longitude),
+      () => setOffline(true),
+    );
+  }
+
+  async function handleCitySelect(city: CityResult) {
+    fetchAir(city.latitude, city.longitude);
   }
 
   async function planDay() {
@@ -262,11 +271,7 @@ export default function Home() {
             </div>
             <div className="location-tools">
               <button className="secondary location-button" onClick={locate}><Wind size={16} aria-hidden="true" />Use my location</button>
-              <div className="city-search">
-                <label className="sr-only" htmlFor="city">Search city</label>
-                <input id="city" value={city} onChange={(event) => setCity(event.target.value)} onKeyDown={(event) => event.key === "Enter" && searchCity()} placeholder="Find a city" />
-                <button className="secondary" onClick={searchCity}>Search</button>
-              </div>
+              <CitySearch onSelect={handleCitySelect} />
             </div>
           </div>
 
@@ -396,7 +401,7 @@ export default function Home() {
             <article className="ritual-card dial-card">
               <div className="ritual-title"><Sun size={19} aria-hidden="true" /><span>Day dial</span></div>
               <div className="day-dial">
-                <DayDial hourly={timeline} bestHour={cleanestTime} />
+                <DayDial hourly={timeline} bestHour={cleanestTime} currentHour={locationHour} />
               </div>
               <p className="dial-caption">Lighter is cleaner. Darker is worse.</p>
             </article>

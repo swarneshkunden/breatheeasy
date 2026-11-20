@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { aiRequestSchema, roundCoordinate } from "@/lib/security/validation";
+import { checkRateLimit as checkInMemoryRateLimit } from "@/lib/security/rateLimit";
 import { createRulePlan } from "@/lib/rules/engine";
 
 const outputSchema = z.object({
@@ -8,8 +9,6 @@ const outputSchema = z.object({
   indoor: z.array(z.object({ title: z.string(), detail: z.string(), impact: z.string(), score: z.number().min(0).max(100) })),
   sustainable: z.array(z.object({ title: z.string(), detail: z.string(), impact: z.string(), score: z.number().min(0).max(100) })),
 });
-
-const rateWindow = new Map<string, { count: number; resetAt: number }>();
 
 async function checkRateLimit(ip: string) {
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
@@ -30,18 +29,10 @@ async function checkRateLimit(ip: string) {
       const result = await limiter.limit(ip);
       return { allowed: result.success, retry: Math.max(1, Math.ceil((result.reset - Date.now()) / 1000)) };
     } catch {
-      // The in-memory fallback below keeps the route available if Upstash fails.
+      // Fall through to the in-memory limiter if Upstash is unavailable.
     }
   }
-  const now = Date.now();
-  const entry = rateWindow.get(ip);
-  if (!entry || entry.resetAt <= now) {
-    rateWindow.set(ip, { count: 1, resetAt: now + 60_000 });
-    return { allowed: true, retry: 60 };
-  }
-  if (entry.count >= 10) return { allowed: false, retry: Math.ceil((entry.resetAt - now) / 1000) };
-  entry.count += 1;
-  return { allowed: true, retry: Math.ceil((entry.resetAt - now) / 1000) };
+  return checkInMemoryRateLimit(ip);
 }
 
 export async function POST(request: NextRequest) {
@@ -66,7 +57,7 @@ export async function POST(request: NextRequest) {
   const parsed = aiRequestSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   const data = parsed.data;
-  const air = { aqi: data.currentAqi, pm25: data.pm25, pm10: 0, no2: 0, o3: 0, city: "", latitude: roundCoordinate(data.latitude), longitude: roundCoordinate(data.longitude), hourly: [], source: "live" as const, updatedAt: "" };
+  const air = { aqi: data.currentAqi, pm25: data.pm25, pm10: 0, no2: 0, o3: 0, city: "", latitude: roundCoordinate(data.latitude), longitude: roundCoordinate(data.longitude), hourly: [], source: "live" as const, updatedAt: "", timezone: null, utcOffsetSeconds: null };
   const fallback = createRulePlan(air, data.profile);
 
   if (!process.env.GEMINI_API_KEY) return NextResponse.json({ ...fallback, smartMode: "offline" });

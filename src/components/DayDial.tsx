@@ -17,11 +17,12 @@ const dialColors: Record<string, string> = {
 interface DayDialProps {
   hourly: HourlyAir[];
   bestHour: string;
+  currentHour?: number;
 }
 
-function DayDialView({ hourly, bestHour }: DayDialProps) {
+function DayDialView({ hourly, bestHour, currentHour }: DayDialProps) {
   const hours = hourly.slice(0, 24);
-  const now = new Date().getHours();
+  const now = currentHour ?? new Date().getHours();
   const markerAngle = now * 15 - 90;
 
   return (

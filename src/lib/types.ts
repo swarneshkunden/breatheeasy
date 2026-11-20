@@ -27,12 +27,22 @@ export interface AirSnapshot {
   hourly: HourlyAir[];
   source: "live" | "demo";
   updatedAt: string;
+  timezone: string | null;
+  utcOffsetSeconds: number | null;
 }
 
 export interface HourlyAir {
   time: string;
   aqi: number;
   pm25: number;
+}
+
+export interface CityResult {
+  name: string;
+  admin1: string | null;
+  country: string | null;
+  latitude: number;
+  longitude: number;
 }
 
 export interface AdviceTip {

@@ -11,6 +11,8 @@ export const demoAir: AirSnapshot = {
   longitude: 77.21,
   source: "demo",
   updatedAt: new Date().toISOString(),
+  timezone: null,
+  utcOffsetSeconds: null,
   hourly: Array.from({ length: 24 }, (_, hour) => ({
     time: `${String(hour).padStart(2, "0")}:00`,
     aqi: hour < 6 ? 330 : hour < 10 ? 380 : hour < 16 ? 210 : hour < 20 ? 340 : 360,
