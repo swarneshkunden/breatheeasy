@@ -73,13 +73,46 @@ export function dialSegmentGeometry(radius = 88, gapDegrees = 1) {
   });
 }
 
+export function annularSegmentPath(index: number, centerX = 115, centerY = 115) {
+  const segment = dialSegmentGeometry(88, 1)[index];
+  if (!segment) return "";
+  const polar = (radius: number, degrees: number) => ({
+    x: centerX + radius * Math.cos((degrees * Math.PI) / 180),
+    y: centerY + radius * Math.sin((degrees * Math.PI) / 180),
+  });
+  const outerStart = polar(segment.outerRadius, segment.start);
+  const outerEnd = polar(segment.outerRadius, segment.end);
+  const innerEnd = polar(segment.innerRadius, segment.end);
+  const innerStart = polar(segment.innerRadius, segment.start);
+  const largeArc = segment.end - segment.start <= 180 ? 0 : 1;
+  return [
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${segment.outerRadius} ${segment.outerRadius} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${segment.innerRadius} ${segment.innerRadius} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y}`,
+    "Z",
+  ].join(" ");
+}
+
 export function bestWindow(hourly: HourlyAir[]) {
   if (hourly.length === 0) return null;
-  let bestIndex = 0;
-  hourly.forEach((hour, index) => {
-    if (hour.aqi < hourly[bestIndex].aqi) bestIndex = index;
-  });
-  return { startIndex: bestIndex, endIndex: bestIndex, hour: hourly[bestIndex] };
+  const windowSize = hourly.length >= 2 ? 2 : 1;
+  let bestStart = 0;
+  let bestAverage = Number.POSITIVE_INFINITY;
+  for (let start = 0; start <= hourly.length - windowSize; start += 1) {
+    const average = hourly
+      .slice(start, start + windowSize)
+      .reduce((sum, hour) => sum + hour.aqi, 0) / windowSize;
+    if (average < bestAverage) {
+      bestAverage = average;
+      bestStart = start;
+    }
+  }
+  return {
+    startIndex: bestStart,
+    endIndex: bestStart + windowSize - 1,
+    hour: hourly[bestStart],
+  };
 }
 
 export function whatIfTotals(selected: readonly string[]) {

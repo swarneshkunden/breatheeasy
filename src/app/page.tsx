@@ -21,6 +21,7 @@ import { copy } from "@/lib/i18n";
 import { AirSnapshot, AdvicePlan, HouseholdProfile, Language } from "@/lib/types";
 import { exposureCigarettes } from "@/lib/impact/calculator";
 import { LivingSkyline } from "@/components/LivingSkyline";
+import { DayDial } from "@/components/DayDial";
 import { bestWindow, whatIfTotals } from "@/lib/presentation";
 
 const defaultProfile: HouseholdProfile = {
@@ -100,15 +101,6 @@ export default function Home() {
   const cleanestWindow = bestWindow(current.hourly);
   const cleanestHour = cleanestWindow?.hour.time ?? "14:00";
   const cleanestTime = cleanestHour.includes("T") ? cleanestHour.slice(11, 16) : cleanestHour.slice(0, 5);
-  const dialColors: Record<string, string> = {
-    good: "var(--aqi-good)",
-    moderate: "var(--aqi-moderate)",
-    sensitive: "var(--aqi-sensitive)",
-    unhealthy: "var(--aqi-unhealthy)",
-    "very-unhealthy": "var(--aqi-very-unhealthy)",
-    hazardous: "var(--aqi-hazardous)",
-  };
-  const dialCircumference = 2 * Math.PI * 66;
 
   async function locate() {
     if (!navigator.geolocation) return;
@@ -358,34 +350,16 @@ export default function Home() {
           <div className="ritual-grid">
             <article className="ritual-card window-card">
               <div className="ritual-title"><Wind size={19} aria-hidden="true" /><span>Window timer</span></div>
-              <span className={`window-status ${current.aqi > 150 ? "closed" : "open"}`}>{current.aqi > 150 ? "Keep windows closed" : "A fresh-air break"}</span>
-              <h3>{current.aqi > 150 ? `Open at ${cleanestTime}` : "Let the cleaner air in"}</h3>
-              <p>{current.aqi > 150 ? "Ventilate for about 10 minutes during the cleaner forecast window, then close up again." : "Open windows briefly while the forecast is at its cleanest."}</p>
+              <span className={`window-status ${cleanestWindow && cleanestWindow.hour.aqi > 150 ? "closed" : "open"}`}>{cleanestWindow && cleanestWindow.hour.aqi > 150 ? "Keep windows closed" : "Good time to open"}</span>
+              <h3>{cleanestWindow && cleanestWindow.hour.aqi > 150 ? "Even the best hour is unhealthy" : `Open at ${cleanestTime}`}</h3>
+              <p>{cleanestWindow && cleanestWindow.hour.aqi > 150
+                ? "Use filtration indoors and keep windows closed. Ventilation is not recommended at these forecast levels."
+                : "Ventilate about 10 minutes, then close up again. This window has the lowest forecast AQI."}</p>
             </article>
             <article className="ritual-card dial-card">
               <div className="ritual-title"><Sun size={19} aria-hidden="true" /><span>Day dial</span></div>
-              <div className="day-dial" role="img" aria-label="24-hour air quality dial. Lighter segments indicate cleaner hours.">
-                <svg viewBox="0 0 170 170" aria-hidden="true">
-                  <circle cx="85" cy="85" r="66" fill="none" stroke="var(--hairline)" strokeWidth="26" />
-                  {timeline.slice(0, 24).map((hour, index) => (
-                    <circle
-                      key={hour.time}
-                      cx="85"
-                      cy="85"
-                      r="66"
-                      fill="none"
-                      stroke={dialColors[categorizeAqi(hour.aqi).tone]}
-                      strokeWidth="26"
-                      strokeDasharray={`${dialCircumference / 24 - 2} ${dialCircumference}`}
-                      transform={`rotate(${index * 15 - 90} 85 85)`}
-                    />
-                  ))}
-                </svg>
-                <div className="dial-center"><span>Best hour</span><strong>{cleanestTime}</strong></div>
-                <span className="dial-label label-midnight">12 am</span>
-                <span className="dial-label label-morning">6 am</span>
-                <span className="dial-label label-noon">12 pm</span>
-                <span className="dial-label label-evening">6 pm</span>
+              <div className="day-dial">
+                <DayDial hourly={timeline} bestHour={cleanestTime} />
               </div>
               <p className="dial-caption">Lighter is cleaner. Darker is worse.</p>
             </article>

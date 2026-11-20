@@ -424,7 +424,10 @@ main {
 .dial-card { text-align: center; }
 .dial-card .ritual-title { text-align: left; }
 .day-dial { position: relative; width: min(210px, 100%); aspect-ratio: 1; margin: 8px auto 4px; }
-.day-dial svg { width: 100%; height: 100%; overflow: visible; transform: rotate(0); }
+.day-dial svg { width: 100%; height: 100%; overflow: visible; }
+.dial-card-content { position: relative; width: 100%; }
+.dial-hour-label { fill: var(--muted); font-size: 9px; }
+.dial-current-marker { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
 .dial-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; }
 .dial-center strong { color: var(--ink); font-size: 20px; font-weight: 600; }
 .dial-label { position: absolute; color: var(--muted); font-size: 10px; }

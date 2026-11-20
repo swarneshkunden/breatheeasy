@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bestWindow, dialSegmentGeometry, mixHex, skyColor, skyLayerMix, visibilityKm, whatIfTotals } from "./presentation";
+import { annularSegmentPath, bestWindow, dialSegmentGeometry, mixHex, skyColor, skyLayerMix, visibilityKm, whatIfTotals } from "./presentation";
 
 describe("presentation calculations", () => {
   it("clamps sky color endpoints", () => {
@@ -28,6 +28,7 @@ describe("presentation calculations", () => {
     expect(segments).toHaveLength(24);
     expect(segments[0].start).toBe(-89.5);
     expect(segments[0].end).toBe(-75.5);
+    expect(annularSegmentPath(0)).toContain("A 88 88");
   });
 
   it("finds the lowest-AQI contiguous hour window", () => {
@@ -36,7 +37,7 @@ describe("presentation calculations", () => {
       { time: "13:00", aqi: 80, pm25: 30 },
       { time: "14:00", aqi: 60, pm25: 20 },
     ];
-    expect(bestWindow(hourly)?.hour.time).toBe("14:00");
+    expect(bestWindow(hourly)?.hour.time).toBe("13:00");
     expect(bestWindow([])).toBeNull();
   });
 
