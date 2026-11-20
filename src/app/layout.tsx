@@ -9,6 +9,13 @@ export const metadata: Metadata = {
   title: "BreatheEasy — Urban Air Quality Assistant",
   description: "Smog-smart routines, indoor air hacks, and community action for cleaner family days.",
   manifest: "/manifest.webmanifest",
+  openGraph: {
+    title: "BreatheEasy — Urban Air Quality Assistant",
+    description: "Smog-smart routines, indoor air hacks, and community action for cleaner family days.",
+    type: "website",
+    url: "https://breatheeasy.example",
+    images: [{ url: "/og-image.svg", width: 1200, height: 630, alt: "BreatheEasy clean air pledge" }],
+  },
 };
 
 export const viewport: Viewport = { themeColor: "#161A17", width: "device-width", initialScale: 1 };

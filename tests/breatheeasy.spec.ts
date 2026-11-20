@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 test("demo plan and language work", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await expect(page.getByRole("heading", { name: "New Delhi" })).toBeVisible();
   await expect(page.getByText("Hazardous")).toBeVisible();
   await page.getByRole("button", { name: "Switch language" }).click();
@@ -12,13 +12,13 @@ test("demo plan and language work", async ({ page }) => {
 });
 
 test("main page has no serious accessibility violations", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   const results = await new AxeBuilder({ page } as never).analyze();
   expect(results.violations.filter((violation) => violation.impact === "serious" || violation.impact === "critical")).toEqual([]);
 });
 
 test("living skyline slider and what-if keyboard flows", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   const slider = page.getByRole("slider", { name: "Air quality preview" });
   await slider.focus();
   await slider.press("Home");
@@ -35,7 +35,7 @@ test("living skyline slider and what-if keyboard flows", async ({ page }) => {
 });
 
 test("demo and offline states remain usable", async ({ page, context }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await expect(page.getByText("Delhi-style severe smog scenario")).toBeVisible();
   await page.getByRole("checkbox", { name: "Demo mode" }).uncheck();
   await context.setOffline(true);
@@ -46,7 +46,7 @@ test("demo and offline states remain usable", async ({ page, context }) => {
 
 test("both themes pass serious axe checks", async ({ page }) => {
   test.setTimeout(60_000);
-  await page.goto("/");
+  await page.goto("/app");
   const dark = await new AxeBuilder({ page } as never).analyze();
   expect(dark.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""))).toEqual([]);
   await page.getByRole("button", { name: "Switch to Morning theme" }).click();
@@ -59,7 +59,7 @@ test("pledge creates a downloadable share card", async ({ page }) => {
     Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
     Object.defineProperty(navigator, "canShare", { configurable: true, value: undefined });
   });
-  await page.goto("/");
+  await page.goto("/app");
   await page.evaluate(() => {
     const testWindow = window as Window & { pledgeCardTriggered?: boolean };
     testWindow.pledgeCardTriggered = false;
@@ -81,10 +81,10 @@ test("geolocation one-shot uses granted coordinates", async ({ context, page }) 
   await context.setGeolocation({ latitude: 28.61, longitude: 77.21, accuracy: 10 });
   const airCalls: string[] = [];
   await context.route("**/api/air", (request) => {
-    airCalls.push(request.url());
+    airCalls.push(request.request().url());
     return request.continue();
   });
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByRole("button", { name: "Use my location" }).click();
   await expect.poll(() => airCalls.length).toBeGreaterThanOrEqual(1);
   await expect(page.getByText("Your location (28.61°N, 77.21°E)")).toBeVisible();
@@ -95,10 +95,10 @@ test("moving over 1 km triggers a refresh, under 1 km does not", async ({ contex
   await context.setGeolocation({ latitude: 28.61, longitude: 77.21, accuracy: 10 });
   const airCalls: string[] = [];
   await context.route("**/api/air", (request) => {
-    airCalls.push(request.url());
+    airCalls.push(request.request().url());
     return request.continue();
   });
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByRole("button", { name: "Follow my location" }).click();
   await expect.poll(() => airCalls.length).toBeGreaterThanOrEqual(1);
   const baseline = airCalls.length;
@@ -114,7 +114,7 @@ test("moving over 1 km triggers a refresh, under 1 km does not", async ({ contex
 test("denied location falls back to city search", async ({ context, page }) => {
   await context.grantPermissions([]);
   await context.setGeolocation({ latitude: 0, longitude: 0, accuracy: 10 });
-  await page.goto("/");
+  await page.goto("/app");
   await page.getByRole("button", { name: "Use my location" }).click();
   await expect(page.getByText(/location access is blocked/i)).toBeVisible();
   await page.getByRole("button", { name: "Follow my location" }).click();
