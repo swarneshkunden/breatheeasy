@@ -2,12 +2,12 @@ import { AdvicePlan, AirSnapshot, HouseholdProfile, AdviceTip } from "../types";
 import { exposureCigarettes, purifierImpact, tripImpact } from "../impact/calculator";
 
 export function categorizeAqi(aqi: number) {
-  if (aqi <= 50) return { label: "Good", tone: "good", color: "#20c997" };
-  if (aqi <= 100) return { label: "Moderate", tone: "moderate", color: "#f6c85f" };
-  if (aqi <= 150) return { label: "Unhealthy for sensitive groups", tone: "sensitive", color: "#ff9f43" };
-  if (aqi <= 200) return { label: "Unhealthy", tone: "unhealthy", color: "#ff6b6b" };
-  if (aqi <= 300) return { label: "Very unhealthy", tone: "very-unhealthy", color: "#a855f7" };
-  return { label: "Hazardous", tone: "hazardous", color: "#8f1d1d" };
+  if (aqi <= 50) return { label: "Good", tone: "good", color: "#6F8F72" };
+  if (aqi <= 100) return { label: "Moderate", tone: "moderate", color: "#C2A25A" };
+  if (aqi <= 150) return { label: "Unhealthy for sensitive groups", tone: "sensitive", color: "#C98A4B" };
+  if (aqi <= 200) return { label: "Unhealthy", tone: "unhealthy", color: "#B5654A" };
+  if (aqi <= 300) return { label: "Very unhealthy", tone: "very-unhealthy", color: "#8A4B5C" };
+  return { label: "Hazardous", tone: "hazardous", color: "#5A3E3A" };
 }
 
 export function createRulePlan(air: AirSnapshot, profile: HouseholdProfile): AdvicePlan {
