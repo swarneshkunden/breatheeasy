@@ -22,7 +22,7 @@ interface DayDialProps {
 
 function DayDialView({ hourly, bestHour, currentHour }: DayDialProps) {
   const hours = hourly.slice(0, 24);
-  const now = currentHour ?? new Date().getHours();
+  const now = currentHour ?? 0;
   const markerAngle = now * 15 - 90;
 
   return (

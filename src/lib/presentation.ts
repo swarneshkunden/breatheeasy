@@ -76,9 +76,10 @@ export function dialSegmentGeometry(radius = 88, gapDegrees = 1) {
 export function annularSegmentPath(index: number, centerX = 115, centerY = 115) {
   const segment = dialSegmentGeometry(88, 1)[index];
   if (!segment) return "";
+  const round = (value: number) => Math.round(value * 1000) / 1000;
   const polar = (radius: number, degrees: number) => ({
-    x: centerX + radius * Math.cos((degrees * Math.PI) / 180),
-    y: centerY + radius * Math.sin((degrees * Math.PI) / 180),
+    x: round(centerX + radius * Math.cos((degrees * Math.PI) / 180)),
+    y: round(centerY + radius * Math.sin((degrees * Math.PI) / 180)),
   });
   const outerStart = polar(segment.outerRadius, segment.start);
   const outerEnd = polar(segment.outerRadius, segment.end);
