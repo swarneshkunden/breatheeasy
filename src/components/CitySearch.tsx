@@ -61,16 +61,18 @@ export function CitySearch({ onSelect, value: initialValue, disabled = false }: 
       return;
     }
     const id = ++requestIdRef.current;
-    abortRef.current?.abort();
     const controller = new AbortController();
+    const previousController = abortRef.current;
     abortRef.current = controller;
+    if (previousController) previousController.abort();
     setLoading(true);
     setError(null);
     try {
       const response = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal });
-      if (id !== requestIdRef.current) return;
+      if (id !== requestIdRef.current || controller.signal.aborted) return;
       if (!response.ok) throw new Error("Search failed");
       const body = await response.json();
+      if (id !== requestIdRef.current) return;
       if (Array.isArray(body)) {
         setResults(body as CityResult[]);
         setOpen(true);
@@ -80,7 +82,7 @@ export function CitySearch({ onSelect, value: initialValue, disabled = false }: 
         setError(body?.message ?? "No match, try a nearby larger city");
       }
     } catch {
-      if (id !== requestIdRef.current) return;
+      if (id !== requestIdRef.current || controller.signal.aborted) return;
       setResults([]);
       setOpen(false);
       setError("Search is temporarily unavailable");
