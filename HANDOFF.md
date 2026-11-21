@@ -71,6 +71,7 @@ Work Package C status: COMPLETE (landing page `/`, app at `/app`, manifest/sitem
 
 ### Fixed after final report
 - **CitySearch AbortError race condition** (`src/components/CitySearch.tsx`): typing in the city combobox triggered `fetchResults` which aborted the previous in-flight fetch mid-await, surfacing an unhandled `AbortError: signal is aborted without reason`. Fixed by installing the new `AbortController` before aborting the previous one, and returning early when the current signal is aborted or the request is superseded. typecheck, lint, test (63), and build all pass after the fix.
+- **DayDial SVG path hydration mismatch** (`src/lib/presentation.ts`, `src/components/DayDial.tsx`): `annularSegmentPath` emitted raw `Math.cos`/`Math.sin` floats whose last digit differs between Node.js SSR and the browser, causing SVG path `d` attribute hydration mismatches. Fixed by rounding polar coordinates to 3 decimals. `DayDialView` no longer calls `new Date().getHours()` during render; the current-hour marker comes purely from the `currentHour` prop so server and client agree. Build, lint, typecheck, tests all pass.
 
 ### Known non-blockers (environmental, no code change)
 - `npm run dev` hydration-mismatch warning shows `bis_skin_checked="1"` attributes — injected by a browser extension (password manager) between SSR and hydration, not by our code. The server-rendered `LivingSkyline` is deterministic from props; build, lint, typecheck, tests all pass. Not present in production/Lighthouse.
