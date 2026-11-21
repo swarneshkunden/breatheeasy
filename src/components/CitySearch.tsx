@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import { CityResult } from "@/lib/types";
 
 interface CitySearchProps {
@@ -15,9 +16,7 @@ export function CitySearch({ onSelect, value: initialValue, disabled = false }: 
   const [results, setResults] = useState<CityResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const highlighted = useRef(-1);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const boxRef = useRef<HTMLUListElement>(null);
+  const [highlighted, setHighlighted] = useState(-1);
   const abortRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -30,18 +29,26 @@ export function CitySearch({ onSelect, value: initialValue, disabled = false }: 
   }, []);
 
   const close = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    requestIdRef.current += 1;
+    abortRef.current?.abort();
     setOpen(false);
-    highlighted.current = -1;
+    setLoading(false);
+    setHighlighted(-1);
     setError(null);
   }, []);
 
   const select = useCallback(
     (city: CityResult) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      requestIdRef.current += 1;
+      abortRef.current?.abort();
       const rounded = { ...city, latitude: Math.round(city.latitude * 100) / 100, longitude: Math.round(city.longitude * 100) / 100 };
       setQuery(`${rounded.name}${rounded.admin1 ? ", " + rounded.admin1 : ""}${rounded.country ? ", " + rounded.country : ""}`);
       setResults([]);
       setOpen(false);
-      highlighted.current = -1;
+      setLoading(false);
+      setHighlighted(-1);
       try {
         localStorage.setItem("breatheeasy-last-city", JSON.stringify({ name: rounded.name, admin1: rounded.admin1, country: rounded.country, latitude: rounded.latitude, longitude: rounded.longitude }));
       } catch {
@@ -58,6 +65,7 @@ export function CitySearch({ onSelect, value: initialValue, disabled = false }: 
       setResults([]);
       setOpen(false);
       setError(null);
+      setLoading(false);
       return;
     }
     const id = ++requestIdRef.current;
@@ -96,7 +104,17 @@ export function CitySearch({ onSelect, value: initialValue, disabled = false }: 
       const next = event.target.value;
       setQuery(next);
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      requestIdRef.current += 1;
+      abortRef.current?.abort();
+      setResults([]);
+      setHighlighted(-1);
       setError(null);
+      setOpen(next.trim().length >= 2);
+      setLoading(next.trim().length >= 2);
+      if (next.trim().length < 2) {
+        setLoading(false);
+        return;
+      }
       debounceRef.current = setTimeout(() => fetchResults(next), 300);
     },
     [fetchResults],
@@ -105,50 +123,63 @@ export function CitySearch({ onSelect, value: initialValue, disabled = false }: 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Escape") { close(); return; }
-      if (!open) { if (event.key === "ArrowDown") { setOpen(true); highlighted.current = 0; } return; }
-      if (event.key === "ArrowDown") { event.preventDefault(); highlighted.current = Math.min(highlighted.current + 1, results.length - 1); }
-      else if (event.key === "ArrowUp") { event.preventDefault(); highlighted.current = Math.max(highlighted.current - 1, -1); }
-      else if (event.key === "Enter") { event.preventDefault(); if (highlighted.current >= 0) select(results[highlighted.current]); }
+      if (!open) {
+        if (event.key === "ArrowDown" && results.length > 0) { setOpen(true); setHighlighted(0); }
+        return;
+      }
+      if (event.key === "ArrowDown") { event.preventDefault(); setHighlighted((prev) => Math.min(prev + 1, results.length - 1)); }
+      else if (event.key === "ArrowUp") { event.preventDefault(); setHighlighted((prev) => Math.max(prev - 1, -1)); }
+      else if (event.key === "Enter") {
+        event.preventDefault();
+        if (highlighted >= 0) select(results[highlighted]);
+        else void fetchResults(query);
+      }
     },
-    [open, results, select, close],
+    [open, results, select, close, highlighted, fetchResults, query],
   );
-
-  useEffect(() => {
-    if (inputRef.current && boxRef.current) {
-      inputRef.current.setAttribute("aria-controls", boxRef.current.id);
-    }
-  }, []);
 
   const labelId = "city-search-label";
   const listId = "city-search-list";
 
   return (
-    <div className="city-search" role="combobox" aria-expanded={open} aria-controls={listId} aria-haspopup="listbox">
+    <div className="city-search" role="search">
       <label id={labelId} className="sr-only">Search city</label>
-      <input
-        ref={inputRef}
-        id="city-search"
-        value={query}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-        autoComplete="off"
-        role="searchbox"
-        aria-autocomplete="list"
-        aria-activedescendant={highlighted.current >= 0 ? `city-option-${highlighted.current}` : undefined}
-        aria-labelledby={`${labelId} ${error ? "city-search-error" : ""}`}
-        aria-describedby={error ? "city-search-error" : undefined}
-        placeholder="Find a city"
-      />
-      {open && boxRef.current && (
-        <ul ref={boxRef} id={listId} role="listbox">
+      <div className="city-search-field">
+        <input
+          id="city-search"
+          value={query}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          autoComplete="off"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={open ? listId : undefined}
+          aria-haspopup="listbox"
+          aria-activedescendant={highlighted >= 0 ? `city-option-${highlighted}` : undefined}
+          aria-labelledby={labelId}
+          aria-describedby={error ? "city-search-error" : undefined}
+          placeholder="Find a city"
+        />
+        <button
+          type="button"
+          aria-label="Search cities"
+          onClick={() => void fetchResults(query)}
+          disabled={disabled || loading || query.trim().length < 2}
+        >
+          <Search size={16} aria-hidden="true" />
+        </button>
+      </div>
+      {open && (
+        <ul id={listId} role="listbox" aria-label="City suggestions">
           {loading ? (
             <li role="option" aria-disabled="true" aria-selected={false}>Loading…</li>
           ) : results.length === 0 ? (
             <li role="option" aria-disabled="true" aria-selected={false}>{error ?? "No results"}</li>
           ) : (
             results.map((city, index) => {
-              const active = index === highlighted.current;
+              const active = index === highlighted;
               const label = [city.name, city.admin1, city.country].filter(Boolean).join(", ");
               return (
                 <li
@@ -158,6 +189,7 @@ export function CitySearch({ onSelect, value: initialValue, disabled = false }: 
                   aria-selected={active}
                   data-active={active}
                   onClick={() => select(city)}
+                  onMouseEnter={() => setHighlighted(index)}
                 >
                   {label}
                 </li>

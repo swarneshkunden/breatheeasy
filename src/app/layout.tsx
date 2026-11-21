@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "BreatheEasy — Urban Air Quality Assistant",
   description: "Smog-smart routines, indoor air hacks, and community action for cleaner family days.",
   manifest: "/manifest.webmanifest",
+  metadataBase: new URL("http://localhost:3000"),
   openGraph: {
     title: "BreatheEasy — Urban Air Quality Assistant",
     description: "Smog-smart routines, indoor air hacks, and community action for cleaner family days.",

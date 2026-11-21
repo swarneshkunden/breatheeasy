@@ -15,7 +15,7 @@ function LivingSkylineView({ aqi, city }: LivingSkylineProps) {
   return (
     <div className="skyline-column">
       <div className="skyline" role="img" aria-label={`Illustrated skyline for ${city} at preview AQI ${aqi}`}>
-        <svg viewBox="0 0 680 260" preserveAspectRatio="xMidYMax slice" role="img" aria-labelledby="skyline-title skyline-desc">
+        <svg viewBox="0 0 680 260" preserveAspectRatio="xMidYMax slice" aria-labelledby="skyline-title skyline-desc">
           <title id="skyline-title">Living city skyline</title>
           <desc id="skyline-desc">A distant city, dome, houses, and trees fade as AQI rises.</desc>
           <rect width="680" height="260" fill={colors.sky} />

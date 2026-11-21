@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Cloud,
   CloudFog,
@@ -66,7 +65,25 @@ export default function Home() {
 const [theme, setTheme] = useState<"morning" | "dusk">("dusk");
 const [previewAqi, setPreviewAqi] = useState(demoAir.aqi);
 
-const { requestLocation, setFollowing, following, error: locationError } = useLocation({
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+
+  // Focus management for onboarding modal
+  useEffect(() => {
+    if (onboarding && modalRef.current) {
+      previousActiveElement.current = document.activeElement as HTMLElement;
+      // Focus the first interactive element in the modal
+      const focusable = modalRef.current.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      focusable?.focus();
+    } else if (!onboarding && previousActiveElement.current) {
+      previousActiveElement.current.focus();
+      previousActiveElement.current = null;
+    }
+  }, [onboarding]);
+
+  const { requestLocation, setFollowing, following, error: locationError } = useLocation({
   onChange: async (coords) => {
     await fetchAir(coords.latitude, coords.longitude, true);
     setAir((prev) => ({
@@ -100,6 +117,39 @@ const { requestLocation, setFollowing, following, error: locationError } = useLo
     setPlan(createRulePlan(demo ? demoAir : air, profile));
   }, [demo, air, profile]);
 
+  // Escape key closes assistant panel
+  useEffect(() => {
+    if (!chatOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setChatOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [chatOpen]);
+
+  // Focus trap for assistant panel when open
+  useEffect(() => {
+    if (!chatOpen) return;
+    const panel = document.querySelector<HTMLElement>('.chat-panel');
+    if (!panel) return;
+    const focusableSelect = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const focusableElements = panel.querySelectorAll<HTMLElement>(focusableSelect);
+    let focusIndex = 0;
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      event.preventDefault();
+      if (event.key === "ArrowDown") {
+        focusIndex = Math.min(focusIndex + 1, focusableElements.length - 1);
+        focusableElements[focusIndex]?.focus();
+      } else if (event.key === "ArrowUp") {
+        focusIndex = Math.max(focusIndex - 1, 0);
+        focusableElements[focusIndex]?.focus();
+      }
+    };
+    panel.addEventListener("keydown", handleKeydown);
+    return () => panel.removeEventListener("keydown", handleKeydown);
+  }, [chatOpen]);
+
   useEffect(() => {
     setPreviewAqi(demo ? demoAir.aqi : air.aqi);
   }, [demo, air.aqi]);
@@ -118,7 +168,7 @@ const { requestLocation, setFollowing, following, error: locationError } = useLo
   const offsetHours = (current.utcOffsetSeconds ?? 0) / 3600;
   const locationHour = ((now.getUTCHours() + offsetHours) % 24 + 24) % 24;
 
-  async function fetchAir(latitude: number, longitude: number, markLive = true) {
+  async function fetchAir(latitude: number, longitude: number, markLive = true, cityLabel?: string) {
     const lat = Math.round(latitude * 100) / 100;
     const lon = Math.round(longitude * 100) / 100;
     try {
@@ -126,7 +176,7 @@ const { requestLocation, setFollowing, following, error: locationError } = useLo
       const response = await fetch(`/api/air?lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lon))}`);
       if (!response.ok) throw new Error("air unavailable");
       const result = await response.json() as AirSnapshot;
-      setAir(result);
+      setAir({ ...result, city: cityLabel ?? result.city });
       if (markLive) setDemo(false);
     } catch {
       setOffline(true);
@@ -138,7 +188,8 @@ const { requestLocation, setFollowing, following, error: locationError } = useLo
   }
 
   async function handleCitySelect(city: CityResult) {
-    fetchAir(city.latitude, city.longitude);
+    const cityLabel = [city.name, city.admin1, city.country].filter(Boolean).join(", ");
+    await fetchAir(city.latitude, city.longitude, true, cityLabel);
   }
 
   async function planDay() {
@@ -250,8 +301,39 @@ const { requestLocation, setFollowing, following, error: locationError } = useLo
 
   const timeline = useMemo(() => current.hourly.slice(0, 24), [current]);
 
+  // Keyboard navigation for timeline hours
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest('.timeline')) return;
+      const container = target.closest('.timeline') as HTMLElement;
+      const items = Array.from(container.querySelectorAll<HTMLElement>('.timeline-hour'));
+      if (!items.length) return;
+      const currentIndex = items.findIndex((el) => el === document.activeElement);
+      if (currentIndex === -1) return;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        items[(currentIndex + 1) % items.length]?.focus();
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        items[(currentIndex - 1 + items.length) % items.length]?.focus();
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        items[0]?.focus();
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        items[items.length - 1]?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className="app-shell" data-theme={theme}>
+      <a href="#main-content" className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:top-4 focus-visible:left-4 focus-visible:z-50 focus-visible:px-4 focus-visible:py-2 focus-visible:bg-accent focus-visible:text-background focus-visible:rounded focus-visible:font-medium">
+        Skip to main content
+      </a>
       <header className="topbar">
         <button className="brand" aria-label="BreatheEasy home" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
           <span className="brand-mark" aria-hidden="true"><Wind size={19} strokeWidth={1.7} /></span><span>BreatheEasy</span>
@@ -266,7 +348,7 @@ const { requestLocation, setFollowing, following, error: locationError } = useLo
         </div>
       </header>
 
-      <main>
+      <main id="main-content">
         {demo && <div className="demo-strip"><span className="demo-dot" />{t.demo} <span>Delhi-style severe smog scenario</span></div>}
         {offline && <div className="offline-banner" role="status"><Wind size={16} aria-hidden="true" />Offline · showing your last known air snapshot</div>}
 
@@ -296,13 +378,13 @@ const { requestLocation, setFollowing, following, error: locationError } = useLo
             <LivingSkyline aqi={previewAqi} city={demo ? "New Delhi" : current.city} />
             <div className="hero-copy">
               <div className={`category category-${previewCategory.tone}`}><CategoryIcon size={16} strokeWidth={1.8} aria-hidden="true" /><span>{previewCategory.label}</span></div>
-              <motion.strong className="aqi-number" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} key={previewAqi}>{previewAqi}</motion.strong>
+              <strong className="aqi-number animate-in" key={previewAqi}>{previewAqi}</strong>
               <span className="aqi-unit">US AQI <span>·</span> {current.updatedAt ? "Updated just now" : "Current reading"}</span>
               <h2>{previewAqi > 200 ? "Keep the family indoors" : previewAqi > 100 ? "Choose your outside moments" : "A little more room to breathe"}</h2>
               <p>{previewAqi > 200
                 ? "Wear a well-fitted N95 or FFP2 outdoors if needed. Run filtration indoors and postpone strenuous activity."
                 : "Use the cleaner hours for time outside, and keep checking conditions as they change."}</p>
-              <button className="primary" onClick={planDay}>{loading ? "Building your plan…" : t.plan}<span aria-hidden="true">→</span></button>
+              <button className="primary" onClick={planDay} aria-expanded={chatOpen} aria-controls="assistant-panel">{loading ? "Building your plan…" : t.plan}<span aria-hidden="true">→</span></button>
             </div>
           </div>
 
@@ -440,9 +522,10 @@ const { requestLocation, setFollowing, following, error: locationError } = useLo
             </article>
           </div>
           <div className="timeline-label-row"><span>Today’s hourly air</span><span>Forecast AQI · lower is cleaner</span></div>
-          <div className="timeline" role="group" aria-label="Hourly air quality forecast" tabIndex={0}>
+          <div className="timeline" role="group" aria-label="Hourly air quality forecast" tabIndex={0} aria-describedby="timeline-hint">
+            <span id="timeline-hint" className="sr-only">Use arrow keys to move through the forecast hours.</span>
             {timeline.map((hour) => (
-              <div className="timeline-hour" key={hour.time}>
+              <div className="timeline-hour" key={hour.time} tabIndex={0} role="button" aria-label={`${hour.time.slice(11, 16)} with AQI ${hour.aqi} ${categorizeAqi(hour.aqi).label}`}>
                 <span>{hour.time.slice(11, 16) || hour.time}</span>
                 <div className={`timeline-bar aqi-${categorizeAqi(hour.aqi).tone}`} style={{ height: `${Math.max(18, Math.min(100, hour.aqi / 4))}px` }} aria-hidden="true" />
                 <b>{hour.aqi}</b>
@@ -508,9 +591,9 @@ const { requestLocation, setFollowing, following, error: locationError } = useLo
         </footer>
 
         {chatOpen && (
-          <aside className="chat-panel" aria-label="BreatheEasy assistant">
+          <aside id="assistant-panel" className="chat-panel" aria-label="BreatheEasy assistant">
             <div className="chat-head"><strong>BreatheEasy Assistant</strong><button aria-label="Close assistant" onClick={() => setChatOpen(false)}>×</button></div>
-            <div className="chat-answer" aria-live="polite">{loading ? "Thinking…" : answer || "Ask me how to protect your family."}</div>
+            <div className="chat-answer" aria-live="polite" aria-busy={loading}>{loading ? "Thinking…" : answer || "Ask me how to protect your family."}</div>
             {plan.indoor.length > 0 && <div className="chat-tips">{plan.indoor.map((tip) => <button key={tip.title} onClick={() => setMessage(tip.title)}>{tip.title}</button>)}</div>}
             <div className="chat-input"><input value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => event.key === "Enter" && sendChat()} placeholder="Ask a question…" aria-label="Chat message" /><button onClick={sendChat}>Send</button></div>
           </aside>
@@ -518,7 +601,7 @@ const { requestLocation, setFollowing, following, error: locationError } = useLo
 
         {onboarding && (
           <div className="modal-backdrop" role="presentation">
-            <div className="modal" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+            <div ref={modalRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="profile-title">
               <div className="modal-head"><div><p className="eyebrow">Household profile</p><h2 id="profile-title">Step {step + 1} of 4</h2></div><button aria-label="Close" onClick={() => setOnboarding(false)}>×</button></div>
               {step === 0 && <fieldset><legend>Who lives here?</legend>{["kids","elderly","pregnant","respiratory","adults"].map((member) => <button className={profile.members.includes(member as HouseholdProfile["members"][number]) ? "choice active" : "choice"} key={member} onClick={() => setProfile({ ...profile, members: profile.members.includes(member as HouseholdProfile["members"][number]) ? profile.members.filter((item) => item !== member) : [...profile.members, member as HouseholdProfile["members"][number]] })}>{member}</button>)}</fieldset>}
               {step === 1 && <fieldset><legend>Home setup</legend><button className="choice" onClick={() => setProfile({ ...profile, homeType: "apartment" })}>Apartment</button><button className="choice" onClick={() => setProfile({ ...profile, homeType: "house" })}>House</button><label><input type="checkbox" checked={profile.hasPurifier} onChange={(event) => setProfile({ ...profile, hasPurifier: event.target.checked })} /> Air purifier</label></fieldset>}

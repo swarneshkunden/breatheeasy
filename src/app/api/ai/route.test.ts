@@ -22,9 +22,9 @@ const requestBody = {
 };
 
 function request(body: string, ip: string, contentType = "application/json") {
-  return new NextRequest("http://localhost/api/ai", {
+  return new NextRequest("http://localhost:3000/api/ai", {
     method: "POST",
-    headers: { "content-type": contentType, "x-forwarded-for": ip },
+    headers: { "content-type": contentType, "x-forwarded-for": ip, "origin": "http://localhost:3000" },
     body,
   });
 }

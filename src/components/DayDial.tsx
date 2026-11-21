@@ -33,6 +33,7 @@ function DayDialView({ hourly, bestHour, currentHour }: DayDialProps) {
             key={hour.time}
             d={annularSegmentPath(index, 115, 115)}
             fill={dialColors[categorizeAqi(hour.aqi).tone]}
+            aria-hidden="true"
           />
         ))}
         <line
@@ -41,6 +42,7 @@ function DayDialView({ hourly, bestHour, currentHour }: DayDialProps) {
           x2={115 + 96 * Math.cos((markerAngle * Math.PI) / 180)}
           y2={115 + 96 * Math.sin((markerAngle * Math.PI) / 180)}
           className="dial-current-marker"
+          aria-hidden="true"
         />
         <text x="115" y="17" textAnchor="middle" className="dial-hour-label">12 am</text>
         <text x="213" y="119" textAnchor="middle" className="dial-hour-label">6 am</text>

@@ -120,3 +120,57 @@ test("denied location falls back to city search", async ({ context, page }) => {
   await page.getByRole("button", { name: "Follow my location" }).click();
   await expect(page.getByText(/location access is blocked/i)).toBeVisible();
 });
+
+test("city search loads live air for the selected city and keeps its label", async ({ page }) => {
+  await page.route("**/api/geocode**", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify([{
+      name: "Pune",
+      admin1: "Maharashtra",
+      country: "India",
+      latitude: 18.52,
+      longitude: 73.86,
+    }]),
+  }));
+  await page.route("**/api/air**", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      aqi: 72,
+      pm25: 18,
+      pm10: 24,
+      no2: 8,
+      o3: 30,
+      city: "Your location",
+      latitude: 18.52,
+      longitude: 73.86,
+      hourly: [],
+      source: "live",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      timezone: "Asia/Kolkata",
+      utcOffsetSeconds: 19800,
+    }),
+  }));
+
+  await page.goto("/app");
+  const search = page.getByRole("combobox", { name: "Search city" });
+  await search.fill("Pune");
+  await page.getByRole("option", { name: "Pune, Maharashtra, India" }).click();
+
+  await expect(page.getByRole("heading", { name: "Pune, Maharashtra, India" })).toBeVisible();
+  await expect(page.locator(".aqi-number")).toHaveText("72");
+  await expect(page.getByText("Delhi-style severe smog scenario")).toHaveCount(0);
+});
+
+test("landing page hydrates without application hydration errors", async ({ page }) => {
+  const hydrationErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /hydration|hydrated/i.test(message.text())) {
+      hydrationErrors.push(message.text());
+    }
+  });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Breathe easier, one family at a time" })).toBeVisible();
+  expect(hydrationErrors).toEqual([]);
+});

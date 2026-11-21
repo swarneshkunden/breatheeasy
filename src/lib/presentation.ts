@@ -21,6 +21,9 @@ function rgbToHex(rgb: number[]) {
   return `#${rgb.map((channel) => Math.round(clamp(channel, 0, 255)).toString(16).padStart(2, "0")).join("")}`;
 }
 
+/**
+ * Blends two hex colors. Returns the interpolated hex color.
+ */
 export function mixHex(from: string, to: string, amount: number) {
   const ratio = clamp(amount, 0, 1);
   const a = hexToRgb(from);
@@ -28,6 +31,9 @@ export function mixHex(from: string, to: string, amount: number) {
   return rgbToHex(a.map((channel, index) => channel + (b[index] - channel) * ratio));
 }
 
+/**
+ * Returns the sky color for a given AQI value, interpolating between color stops.
+ */
 export function skyColor(aqi: number) {
   const stops = [
     [0, "#C9DDD8"],
@@ -47,6 +53,10 @@ export function skyColor(aqi: number) {
   return stops.at(-1)?.[1] ?? "#76655A";
 }
 
+/**
+ * Generates a complete skyline color palette (sky, far, mid, near layers + sun opacity)
+ * based on the current AQI level.
+ */
 export function skyLayerMix(aqi: number): SkylineMix {
   const sky = skyColor(aqi);
   const haze = clamp(aqi / 300, 0, 1);
@@ -59,10 +69,16 @@ export function skyLayerMix(aqi: number): SkylineMix {
   };
 }
 
+/**
+ * Estimates atmospheric visibility in kilometers based on AQI.
+ */
 export function visibilityKm(aqi: number) {
   return Math.max(0.3, 14 * Math.exp(-clamp(aqi, 0, 400) / 130));
 }
 
+/**
+ * Returns the geometry for 24 annular segments of the day dial.
+ */
 export function dialSegmentGeometry(radius = 88, gapDegrees = 1) {
   const innerRadius = 62;
   const segmentDegrees = 360 / 24;
@@ -73,6 +89,10 @@ export function dialSegmentGeometry(radius = 88, gapDegrees = 1) {
   });
 }
 
+/**
+ * Generates an SVG path string for a single annular segment of the day dial.
+ * Uses rounded coordinates to ensure deterministic SSR/client rendering.
+ */
 export function annularSegmentPath(index: number, centerX = 115, centerY = 115) {
   const segment = dialSegmentGeometry(88, 1)[index];
   if (!segment) return "";
@@ -95,6 +115,10 @@ export function annularSegmentPath(index: number, centerX = 115, centerY = 115) 
   ].join(" ");
 }
 
+/**
+ * Finds the cleanest contiguous window (1–2 hours) in the hourly forecast.
+ * Returns the best hour's data or null for empty input.
+ */
 export function bestWindow(hourly: HourlyAir[]) {
   if (hourly.length === 0) return null;
   const windowSize = hourly.length >= 2 ? 2 : 1;
@@ -116,6 +140,9 @@ export function bestWindow(hourly: HourlyAir[]) {
   };
 }
 
+/**
+ * Computes scenario impacts (exposure reduction, CO2 avoided) for selected household actions.
+ */
 export function whatIfTotals(selected: readonly string[]) {
   const purifier = selected.includes("purifier");
   const metro = selected.includes("metro");
