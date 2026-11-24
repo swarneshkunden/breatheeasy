@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 const envSchema = z.object({
-  GEMINI_API_KEY: z.string().min(20).optional(),
+  GEMINI_API_KEY: z.preprocess(
+    (value) => typeof value === "string" && value.trim() === "" ? undefined : value,
+    z.string().min(20).optional(),
+  ),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
 });

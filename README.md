@@ -67,7 +67,9 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Visit `http://localhost:3000`. Demo and rule mode work without Gemini credentials.
+Visit `http://localhost:3001`. Demo and rule mode work without Gemini credentials.
+Smart Mode requires a real Gemini API key in `.env.local`; the example key is blank
+so the app uses the safe baseline plan until you configure one.
 
 ## Environment
 
@@ -86,8 +88,11 @@ npm run lint
 npm run typecheck
 npm run check
 npm run build
-npm start
+npm run start
 ```
+
+`npm run start` serves the production build on `http://localhost:3001`. Run
+`npm run build` first, and stop the development server before starting production.
 
 ## Deployment
 

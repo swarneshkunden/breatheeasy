@@ -5,12 +5,12 @@ export default defineConfig({
   fullyParallel: true,
   workers: 1,
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: "http://127.0.0.1:3001",
     trace: "retain-on-failure",
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
       : undefined,
   },
-  webServer: { command: "npm run dev", url: "http://127.0.0.1:3000", reuseExistingServer: true },
+  webServer: { command: "npm run dev", url: "http://127.0.0.1:3001", reuseExistingServer: true },
   projects: [{ name: "mobile", use: { ...devices["Pixel 7"] } }],
 });

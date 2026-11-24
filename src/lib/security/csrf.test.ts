@@ -11,6 +11,23 @@ describe("CSRF", () => {
     expect(verifyOrigin(request)).toBe(true);
   });
 
+  it("allows same-origin requests on the alternate development port", () => {
+    const request = new NextRequest("http://localhost:3001/api/test", {
+      method: "POST",
+      headers: { origin: "http://localhost:3001" },
+    });
+    expect(verifyOrigin(request)).toBe(true);
+    expect(csrfGuard(request)).toBeNull();
+  });
+
+  it("rejects a request from a different port", () => {
+    const request = new NextRequest("http://localhost:3001/api/test", {
+      method: "POST",
+      headers: { origin: "http://localhost:3000" },
+    });
+    expect(verifyOrigin(request)).toBe(false);
+  });
+
   it("blocks requests with mismatched origin", () => {
     const request = new NextRequest("http://localhost:3000/api/test", {
       method: "POST",

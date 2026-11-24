@@ -213,9 +213,13 @@ const [previewAqi, setPreviewAqi] = useState(demoAir.aqi);
       if (!response.ok) throw new Error("offline");
       const result = await response.json() as AdvicePlan;
       setPlan(result);
-      setAnswer(language === "hi"
-        ? "आपका व्यक्तिगत योजना तैयार है। सबसे साफ़ घंटे में बाहर जाएं और फिल्टर की हवा का लाभ लें।"
-        : "Your personalized plan is ready. Use the cleanest hours, keep vulnerable members indoors, and ventilate briefly.");
+      setAnswer(result.smartMode === "offline"
+        ? language === "hi"
+          ? "स्मार्ट मोड ऑफ़लाइन है — एक वैध GEMINI_API_KEY जोड़ें या सुरक्षित मूल योजना का उपयोग करें।"
+          : "Smart Mode is offline. Add a valid GEMINI_API_KEY to .env.local, then restart the app. Your safe baseline plan is ready."
+        : language === "hi"
+          ? "आपका व्यक्तिगत योजना तैयार है। सबसे साफ़ घंटे में बाहर जाएं और फिल्टर की हवा का लाभ लें।"
+          : "Your personalized plan is ready. Use the cleanest hours, keep vulnerable members indoors, and ventilate briefly.");
     } catch {
       setAnswer(language === "hi"
         ? "स्मार्ट मोड ऑफ़लाइन है — सुरक्षित मूल योजना आपके लिए तैयार है।"
@@ -240,7 +244,13 @@ const [previewAqi, setPreviewAqi] = useState(demoAir.aqi);
       if (!response.ok) throw new Error("offline");
       const result = await response.json() as AdvicePlan;
       setPlan(result);
-      setAnswer(language === "hi" ? "प्रश्न का उत्तर आपकी वायु स्थिति और परिवार प्रोफ़ाइल के अनुसार तैयार है।" : "Answer prepared for your air conditions and household profile.");
+      setAnswer(result.smartMode === "offline"
+        ? language === "hi"
+          ? "स्मार्ट मोड ऑफ़लाइन है — एक वैध GEMINI_API_KEY जोड़ें या सुरक्षित मूल योजना का उपयोग करें।"
+          : "Smart Mode is offline. Add a valid GEMINI_API_KEY to .env.local, then restart the app. Your safe baseline plan is ready."
+        : language === "hi"
+          ? "प्रश्न का उत्तर आपकी वायु स्थिति और परिवार प्रोफ़ाइल के अनुसार तैयार है।"
+          : "Answer prepared for your air conditions and household profile.");
     } catch {
       setAnswer("Smart Mode offline — please follow the baseline advice below.");
     } finally {

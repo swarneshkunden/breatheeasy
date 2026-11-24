@@ -21,10 +21,10 @@ const requestBody = {
   },
 };
 
-function request(body: string, ip: string, contentType = "application/json") {
-  return new NextRequest("http://localhost:3000/api/ai", {
+function request(body: string, ip: string, contentType = "application/json", origin = "http://localhost:3000") {
+  return new NextRequest(`${origin}/api/ai`, {
     method: "POST",
-    headers: { "content-type": contentType, "x-forwarded-for": ip, "origin": "http://localhost:3000" },
+    headers: { "content-type": contentType, "x-forwarded-for": ip, origin },
     body,
   });
 }
@@ -68,6 +68,19 @@ describe("AI route security boundaries", () => {
     expect(result.sustainable.length).toBeGreaterThan(0);
   });
 
+  it("does not send the sample key to the AI provider", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "your_gemini_api_key_here");
+    const upstream = vi.fn();
+    vi.stubGlobal("fetch", upstream);
+
+    const response = await POST(request(JSON.stringify(requestBody), "192.0.2.9"));
+    const result = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(result.smartMode).toBe("offline");
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
   it("limits each IP and provides Retry-After", async () => {
     vi.stubEnv("GEMINI_API_KEY", "");
     const ip = "192.0.2.6";
@@ -104,7 +117,7 @@ describe("AI route security boundaries", () => {
     });
     vi.stubGlobal("fetch", upstream);
 
-    const response = await POST(request(JSON.stringify({ ...requestBody, message: injection }), "192.0.2.7"));
+    const response = await POST(request(JSON.stringify({ ...requestBody, message: injection }), "192.0.2.7", "application/json", "http://localhost:3001"));
     const result = await response.json();
 
     expect(response.status).toBe(200);

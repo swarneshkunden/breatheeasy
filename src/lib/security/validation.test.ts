@@ -80,4 +80,8 @@ describe("request validation", () => {
   it("accepts an empty optional server environment", () => {
     expect(validateEnvironment(serverEnvironment())).toEqual({});
   });
+
+  it("treats a blank optional Gemini key as unconfigured", () => {
+    expect(validateEnvironment(serverEnvironment({ GEMINI_API_KEY: "  " }))).toEqual({});
+  });
 });
