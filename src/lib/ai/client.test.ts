@@ -43,7 +43,7 @@ describe("GeminiAiClient", () => {
     fetchSpy.mockResolvedValueOnce(new Response("oops", { status: 500 }));
 
     const client = new GeminiAiClient("test-key");
-    await expect(client.generate("prompt")).rejects.toThrow("AI unavailable");
+    await expect(client.generate("prompt")).rejects.toMatchObject({ name: "GeminiHttpError", status: 500 });
   });
 
   it("aborts long-running requests", async () => {
@@ -51,6 +51,6 @@ describe("GeminiAiClient", () => {
     fetchSpy.mockRejectedValueOnce(abortError);
 
     const client = new GeminiAiClient("test-key");
-    await expect(client.generate("prompt")).rejects.toMatchObject({ name: "AbortError" });
+    await expect(client.generate("prompt")).rejects.toMatchObject({ name: "GeminiTimeoutError" });
   });
 });

@@ -3,6 +3,20 @@ import type { AiClient } from "./types";
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
 const REQUEST_TIMEOUT_MS = 8000;
 
+export class GeminiHttpError extends Error {
+  constructor(readonly status: number) {
+    super("Gemini request failed");
+    this.name = "GeminiHttpError";
+  }
+}
+
+export class GeminiTimeoutError extends Error {
+  constructor() {
+    super("Gemini request timed out");
+    this.name = "GeminiTimeoutError";
+  }
+}
+
 export class GeminiAiClient implements AiClient {
   constructor(private readonly apiKey: string | undefined) {}
 
@@ -21,11 +35,17 @@ export class GeminiAiClient implements AiClient {
         signal: controller.signal,
         cache: "no-store",
       });
-      if (!response.ok) throw new Error("AI unavailable");
+      if (!response.ok) throw new GeminiHttpError(response.status);
       const payload = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
       const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) throw new Error("Empty AI response");
       return text;
+    } catch (error) {
+      const isAbortError = typeof error === "object" && error !== null && "name" in error && error.name === "AbortError";
+      if (controller.signal.aborted || isAbortError) {
+        throw new GeminiTimeoutError();
+      }
+      throw error;
     } finally {
       clearTimeout(timer);
     }
