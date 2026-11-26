@@ -5,6 +5,26 @@ const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 1_000;
 
+const adviceTipSchema = {
+  type: "object",
+  properties: {
+    title: { type: "string" },
+    detail: { type: "string" },
+    impact: { type: "string" },
+    score: { type: "number", minimum: 0, maximum: 100 },
+  },
+  required: ["title", "detail", "impact", "score"],
+} as const;
+const adviceResponseSchema = {
+  type: "object",
+  properties: {
+    lowEmission: { type: "array", items: adviceTipSchema },
+    indoor: { type: "array", items: adviceTipSchema },
+    sustainable: { type: "array", items: adviceTipSchema },
+  },
+  required: ["lowEmission", "indoor", "sustainable"],
+} as const;
+
 export class GeminiHttpError extends Error {
   constructor(readonly status: number) {
     super("Gemini request failed");
@@ -45,7 +65,12 @@ export class GeminiAiClient implements AiClient {
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseJsonSchema: adviceResponseSchema,
+            maxOutputTokens: 2048,
+            thinkingConfig: { thinkingLevel: "low" },
+          },
         }),
         signal: controller.signal,
         cache: "no-store",

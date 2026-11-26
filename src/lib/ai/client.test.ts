@@ -28,6 +28,9 @@ describe("GeminiAiClient", () => {
     const client = new GeminiAiClient("test-key");
     const text = await client.generate("prompt");
     expect(text).toBe("hello");
+    const requestBody = JSON.parse(String(fetchSpy.mock.calls[0]?.[1]?.body));
+    expect(requestBody.generationConfig.responseJsonSchema.required).toEqual(["lowEmission", "indoor", "sustainable"]);
+    expect(requestBody.generationConfig.thinkingConfig.thinkingLevel).toBe("low");
   });
 
   it("throws when response is empty", async () => {
