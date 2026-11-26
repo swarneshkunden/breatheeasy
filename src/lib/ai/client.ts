@@ -1,7 +1,7 @@
 import type { AiClient } from "./types";
 
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
-const REQUEST_TIMEOUT_MS = 8000;
+const REQUEST_TIMEOUT_MS = 25_000;
 
 export class GeminiHttpError extends Error {
   constructor(readonly status: number) {
