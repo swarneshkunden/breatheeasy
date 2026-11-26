@@ -1,6 +1,6 @@
 import type { AiClient } from "./types";
 
-const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent";
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent";
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 1_000;
@@ -69,7 +69,7 @@ export class GeminiAiClient implements AiClient {
             responseMimeType: "application/json",
             responseJsonSchema: adviceResponseSchema,
             maxOutputTokens: 2048,
-            thinkingConfig: { thinkingLevel: "low" },
+            thinkingConfig: { thinkingLevel: "minimal" },
           },
         }),
         signal: controller.signal,
