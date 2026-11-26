@@ -1,6 +1,6 @@
 import type { AiClient } from "./types";
 
-const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
 const REQUEST_TIMEOUT_MS = 8000;
 
 export class GeminiAiClient implements AiClient {

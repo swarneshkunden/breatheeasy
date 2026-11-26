@@ -122,7 +122,7 @@ describe("AI route security boundaries", () => {
 
     expect(response.status).toBe(200);
     expect(upstream).toHaveBeenCalledOnce();
-    expect(String(upstream.mock.calls[0]?.[0])).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent");
+    expect(String(upstream.mock.calls[0]?.[0])).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent");
     expect(JSON.stringify(result)).not.toContain("test-server-secret-key");
   });
 
