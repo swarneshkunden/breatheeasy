@@ -2,8 +2,8 @@ import type { AiClient } from "./types";
 
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
 const REQUEST_TIMEOUT_MS = 20_000;
-const MAX_ATTEMPTS = 2;
-const RETRY_DELAY_MS = 500;
+const MAX_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 1_000;
 
 export class GeminiHttpError extends Error {
   constructor(readonly status: number) {
@@ -29,7 +29,9 @@ export class GeminiAiClient implements AiClient {
         return await this.generateOnce(prompt, this.apiKey);
       } catch (error) {
         if (attempt >= MAX_ATTEMPTS || !isRetryable(error)) throw error;
-        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        const delay = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+        const jitter = Math.floor(Math.random() * delay * 0.25);
+        await new Promise((resolve) => setTimeout(resolve, delay + jitter));
       }
     }
   }

@@ -47,8 +47,9 @@ describe("GeminiAiClient", () => {
     expect(fetchSpy).toHaveBeenCalledOnce();
   });
 
-  it("retries a transient provider 503 once", async () => {
+  it("retries transient provider 503 responses twice", async () => {
     fetchSpy
+      .mockResolvedValueOnce(new Response("temporarily unavailable", { status: 503 }))
       .mockResolvedValueOnce(new Response("temporarily unavailable", { status: 503 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         candidates: [{ content: { parts: [{ text: "hello" }] } }],
@@ -56,15 +57,15 @@ describe("GeminiAiClient", () => {
 
     const client = new GeminiAiClient("test-key");
     await expect(client.generate("prompt")).resolves.toBe("hello");
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
   });
 
   it("aborts long-running requests", async () => {
     const abortError = new DOMException("Aborted", "AbortError");
-    fetchSpy.mockRejectedValueOnce(abortError).mockRejectedValueOnce(abortError);
+    fetchSpy.mockRejectedValueOnce(abortError).mockRejectedValueOnce(abortError).mockRejectedValueOnce(abortError);
 
     const client = new GeminiAiClient("test-key");
     await expect(client.generate("prompt")).rejects.toMatchObject({ name: "GeminiTimeoutError" });
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
   });
 });

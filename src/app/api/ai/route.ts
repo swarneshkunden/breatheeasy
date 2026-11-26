@@ -7,7 +7,7 @@ import { GeminiAiClient, GeminiHttpError, GeminiTimeoutError } from "@/lib/ai/cl
 import { csrfGuard } from "@/lib/security/csrf";
 import type { AdvicePlan } from "@/lib/types";
 
-export const maxDuration = 50;
+export const maxDuration = 70;
 
 const outputSchema = z.object({
   lowEmission: z.array(z.object({ title: z.string(), detail: z.string(), impact: z.string(), score: z.number().min(0).max(100) })),
