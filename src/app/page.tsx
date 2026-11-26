@@ -9,6 +9,8 @@ export const metadata = {
   description: "Smog-smart routines, indoor air hacks, and community action for cleaner family days.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function LandingPage() {
   return (
     <div className="landing-shell">
