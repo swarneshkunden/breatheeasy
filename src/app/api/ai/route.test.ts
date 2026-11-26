@@ -144,6 +144,20 @@ describe("AI route security boundaries", () => {
     expect(JSON.stringify(result)).not.toContain("<script>");
   });
 
+  it("reports invalid model output shapes as invalid responses", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "test-server-secret-key-with-sufficient-length");
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      candidates: [{ content: { parts: [{ text: JSON.stringify({ lowEmission: [] }) }] } }],
+    })));
+
+    const response = await POST(request(JSON.stringify(requestBody), "192.0.2.11"));
+    const result = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(result.smartMode).toBe("offline");
+    expect(result.smartModeReason).toBe("invalid_response");
+  });
+
   it("reports provider authentication failures without exposing provider details", async () => {
     vi.stubEnv("GEMINI_API_KEY", "test-server-secret-key-with-sufficient-length");
     vi.stubGlobal("fetch", vi.fn(async () => new Response("sensitive provider response", { status: 403 })));

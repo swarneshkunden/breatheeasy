@@ -23,7 +23,7 @@ function getSmartModeReason(error: unknown): SmartModeReason {
     if (error.status === 429) return "quota_or_rate_limit";
     return "provider_error";
   }
-  if (error instanceof SyntaxError || (error instanceof Error && error.message === "Empty AI response")) {
+  if (error instanceof SyntaxError || (error instanceof Error && ["Empty AI response", "Invalid AI response"].includes(error.message))) {
     return "invalid_response";
   }
   return "network_error";
