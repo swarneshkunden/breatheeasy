@@ -58,4 +58,5 @@ export interface AdvicePlan {
   sustainable: AdviceTip[];
   smartMode: "live" | "offline";
   smartModeReason?: "missing_api_key" | "provider_auth" | "model_unavailable" | "quota_or_rate_limit" | "timeout" | "invalid_response" | "provider_error" | "network_error";
+  smartModeStatus?: number;
 }

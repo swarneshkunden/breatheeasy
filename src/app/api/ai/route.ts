@@ -99,7 +99,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ...parsedOutput.data, smartMode: "live" }, { headers: { "Cache-Control": "private, max-age=0, no-cache" } });
   } catch (error) {
     const reason = getSmartModeReason(error);
-    console.error("Smart Mode fallback", { reason });
-    return NextResponse.json({ ...fallback, smartMode: "offline", smartModeReason: reason });
+    const status = error instanceof GeminiHttpError ? error.status : undefined;
+    console.error("Smart Mode fallback", { reason, ...(status === undefined ? {} : { providerStatus: status }) });
+    return NextResponse.json({
+      ...fallback,
+      smartMode: "offline",
+      smartModeReason: reason,
+      ...(status === undefined ? {} : { smartModeStatus: status }),
+    });
   }
 }

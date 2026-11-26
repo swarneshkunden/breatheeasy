@@ -168,6 +168,7 @@ describe("AI route security boundaries", () => {
     expect(response.status).toBe(200);
     expect(result.smartMode).toBe("offline");
     expect(result.smartModeReason).toBe("provider_auth");
+    expect(result.smartModeStatus).toBe(403);
     expect(JSON.stringify(result)).not.toContain("sensitive provider response");
   });
 });
