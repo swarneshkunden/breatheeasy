@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+const hourlyAirSchema = z.object({
+  time: z.string(),
+  aqi: z.number().int().min(0).max(1000),
+  pm25: z.number().min(0).max(2000),
+  pm10: z.number().min(0).max(2000),
+  no2: z.number().min(0).max(2000),
+  o3: z.number().min(0).max(2000),
+});
+
 export const airSnapshotSchema = z.object({
   aqi: z.number().int().min(0).max(1000),
   pm25: z.number().min(0).max(2000),
@@ -9,11 +18,7 @@ export const airSnapshotSchema = z.object({
   city: z.string(),
   latitude: z.number(),
   longitude: z.number(),
-  hourly: z.array(z.object({
-    time: z.string(),
-    aqi: z.number().int().min(0).max(1000),
-    pm25: z.number().min(0).max(2000),
-  })),
+  hourly: z.array(hourlyAirSchema),
   source: z.enum(["live", "demo"]),
   updatedAt: z.string(),
   timezone: z.string().nullable(),

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { roundCoordinate } from "@/lib/security/validation";
-import { checkDistributedRateLimit } from "@/lib/security/distributed-rate-limit";
+import { checkRateLimit, READ_LIMITS } from "@/lib/security/distributed-rate-limit";
 import { fetchWithTimeout } from "@/lib/security/fetchWithTimeout";
+import { BoundedCache } from "@/lib/security/bounded-cache";
+import { validateAirSnapshot } from "@/lib/ai/air-validation";
 
 const schema = z.object({
   lat: z.coerce.number().min(-90).max(90),
@@ -11,19 +13,39 @@ const schema = z.object({
 
 const AIR_HOST = "https://air-quality-api.open-meteo.com/v1/air-quality";
 const CACHE_MS = 10 * 60 * 1000;
-const cache = new Map<string, { data: unknown; expiry: number }>();
+const MAX_CACHE_ENTRIES = 100;
+const cache = new BoundedCache<AirSnapshotResponse>(MAX_CACHE_ENTRIES, CACHE_MS);
+
+interface AirSnapshotResponse {
+  aqi: number;
+  pm25: number;
+  pm10: number;
+  no2: number;
+  o3: number;
+  latitude: number;
+  longitude: number;
+  city: string;
+  source: "live" | "demo";
+  updatedAt: string;
+  hourly: Array<{
+    time: string;
+    aqi: number;
+    pm25: number;
+    pm10: number;
+    no2: number;
+    o3: number;
+  }>;
+  timezone: string | null;
+  utcOffsetSeconds: number | null;
+}
 
 function clientIp(request: NextRequest) {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
 }
 
-function pick<T>(array: T[] | undefined, index: number, fallback: T) {
-  return array?.[index] ?? fallback;
-}
-
 export async function GET(request: NextRequest) {
   const ip = clientIp(request);
-  const limit = await checkDistributedRateLimit(ip);
+  const limit = await checkRateLimit(ip, READ_LIMITS);
   if (!limit.allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(limit.retry) } });
   }
@@ -39,10 +61,9 @@ export async function GET(request: NextRequest) {
   const lat = roundCoordinate(parsed.data.lat);
   const lon = roundCoordinate(parsed.data.lon);
   const key = `${lat},${lon}`;
-  const now = Date.now();
   const cached = cache.get(key);
-  if (cached && cached.expiry > now) {
-    return NextResponse.json(cached.data);
+  if (cached) {
+    return NextResponse.json(cached);
   }
 
   const url = new URL(AIR_HOST);
@@ -56,51 +77,34 @@ export async function GET(request: NextRequest) {
   }).toString();
 
   try {
-    const response = await fetchWithTimeout(url, 5000);
-    if (!response.ok) {
-      return NextResponse.json({ error: "Air data temporarily unavailable" }, { status: 502 });
-    }
-    const payload = await response.json() as {
-      current?: { us_aqi?: number; pm2_5?: number; pm10?: number; nitrogen_dioxide?: number; ozone?: number };
-      hourly?: {
-        time: string[];
-        us_aqi: number[];
-        pm2_5: number[];
-        pm10: number[];
-        nitrogen_dioxide: number[];
-        ozone: number[];
-      };
-      timezone?: string;
-      utc_offset_seconds?: number;
+    const validated = await fetchWithTimeout(url, 5000, async (signal) => {
+      const response = await fetch(url, { signal, cache: "no-store" });
+      if (!response.ok) throw new Error("Upstream error");
+      return validateAirSnapshot(await response.json());
+    });
+    const body: AirSnapshotResponse = {
+      aqi: validated.aqi,
+      pm25: validated.pm25,
+      pm10: validated.pm10,
+      no2: validated.no2,
+      o3: validated.o3,
+      latitude: validated.latitude,
+      longitude: validated.longitude,
+      city: validated.city,
+      source: validated.source,
+      updatedAt: validated.updatedAt,
+      hourly: validated.hourly.map((h) => ({
+        time: h.time,
+        aqi: h.aqi,
+        pm25: h.pm25,
+        pm10: h.pm10,
+        no2: h.no2,
+        o3: h.o3,
+      })),
+      timezone: validated.timezone,
+      utcOffsetSeconds: validated.utcOffsetSeconds,
     };
-
-    const current = payload.current ?? {};
-    const times = payload.hourly?.time ?? [];
-    const hourly = times.slice(0, 48).map((time, index) => ({
-      time,
-      aqi: pick(payload.hourly?.us_aqi, index, current.us_aqi ?? 0),
-      pm25: pick(payload.hourly?.pm2_5, index, current.pm2_5 ?? 0),
-      pm10: pick(payload.hourly?.pm10, index, current.pm10 ?? 0),
-      no2: pick(payload.hourly?.nitrogen_dioxide, index, current.nitrogen_dioxide ?? 0),
-      o3: pick(payload.hourly?.ozone, index, current.ozone ?? 0),
-    }));
-
-    const body = {
-      aqi: current.us_aqi ?? 0,
-      pm25: current.pm2_5 ?? 0,
-      pm10: current.pm10 ?? 0,
-      no2: current.nitrogen_dioxide ?? 0,
-      o3: current.ozone ?? 0,
-      latitude: lat,
-      longitude: lon,
-      city: "Your location",
-      source: "live" as const,
-      updatedAt: new Date().toISOString(),
-      hourly,
-      timezone: payload.timezone ?? null,
-      utcOffsetSeconds: payload.utc_offset_seconds ?? null,
-    };
-    cache.set(key, { data: body, expiry: now + CACHE_MS });
+    cache.set(key, body);
     return NextResponse.json(body);
   } catch {
     return NextResponse.json({ error: "Air data temporarily unavailable" }, { status: 502 });

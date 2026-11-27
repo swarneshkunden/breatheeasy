@@ -146,4 +146,53 @@ describe("useLocation follow toggle", () => {
     unmount();
     expect(mockClearWatch).toHaveBeenCalledTimes(1);
   });
+
+  it("does not terminate tracking on re-render", () => {
+    const cb1 = vi.fn();
+    const { result, rerender } = renderHook(({ cb }: { cb: () => void }) => useLocation({ onChange: cb }), { initialProps: { cb: cb1 } });
+    act(() => {
+      result.current.setFollowing(true);
+    });
+    expect(mockWatchPosition).toHaveBeenCalledTimes(1);
+    // Re-render with a new callback identity.
+    const cb2 = vi.fn();
+    rerender({ cb: cb2 });
+    expect(mockWatchPosition).toHaveBeenCalledTimes(1);
+    expect(result.current.following).toBe(true);
+  });
+
+  it("restores tracking when tab becomes visible again", () => {
+    const { result } = renderHook(() => useLocation());
+    act(() => {
+      result.current.setFollowing(true);
+    });
+    expect(mockWatchPosition).toHaveBeenCalledTimes(1);
+    expect(mockClearWatch).not.toHaveBeenCalled();
+    act(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, value: true });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(mockClearWatch).toHaveBeenCalled();
+    expect(result.current.following).toBe(false);
+    act(() => {
+      Object.defineProperty(document, "hidden", { configurable: true, value: false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(mockWatchPosition.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(result.current.following).toBe(true);
+  });
+
+  it("does not create duplicate watchers on repeated activation", () => {
+    const { result } = renderHook(() => useLocation());
+    act(() => {
+      result.current.setFollowing(true);
+    });
+    act(() => {
+      result.current.setFollowing(true);
+    });
+    act(() => {
+      result.current.setFollowing(true);
+    });
+    expect(mockWatchPosition).toHaveBeenCalledTimes(1);
+  });
 });

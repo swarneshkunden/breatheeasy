@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { checkRateLimit } from "@/lib/security/rateLimit";
-import { checkDistributedRateLimit } from "@/lib/security/distributed-rate-limit";
+import { checkRateLimit as checkDistributedRateLimit } from "@/lib/security/distributed-rate-limit";
 
 beforeEach(() => {
   vi.restoreAllMocks();

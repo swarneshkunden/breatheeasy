@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CityResult } from "@/lib/types";
+import { roundCoordinate } from "@/lib/security/validation";
 import { validateCityResults } from "@/lib/ai/city-validation";
+import { fetchWithTimeout } from "@/lib/security/fetchWithTimeout";
 
 interface UseCitySearchProps {
   onSelect: (city: CityResult) => void;
@@ -39,7 +41,7 @@ export function useCitySearch({ onSelect }: UseCitySearchProps) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       requestIdRef.current += 1;
       abortRef.current?.abort();
-      const rounded = { ...city, latitude: Math.round(city.latitude * 100) / 100, longitude: Math.round(city.longitude * 100) / 100 };
+      const rounded = { ...city, latitude: roundCoordinate(city.latitude), longitude: roundCoordinate(city.longitude) };
       setQuery(`${rounded.name}${rounded.admin1 ? ", " + rounded.admin1 : ""}${rounded.country ? ", " + rounded.country : ""}`);
       setResults([]);
       setLoading(false);
@@ -70,17 +72,22 @@ export function useCitySearch({ onSelect }: UseCitySearchProps) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal });
+      const validated = await fetchWithTimeout(
+        `/api/geocode?q=${encodeURIComponent(trimmed)}`,
+        5000,
+        async (signal) => {
+          const response = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`, { signal });
+          if (!response.ok) throw new Error("Search failed");
+          return await response.json();
+        },
+      );
       if (id !== requestIdRef.current || controller.signal.aborted) return;
-      if (!response.ok) throw new Error("Search failed");
-      const body = await response.json();
-      if (id !== requestIdRef.current) return;
-      if (Array.isArray(body)) {
-        const validated = validateCityResults(body);
-        setResults(validated);
+      if (Array.isArray(validated)) {
+        const cityValidated = validateCityResults(validated);
+        setResults(cityValidated);
       } else {
         setResults([]);
-        setError(body?.message ?? "No match, try a nearby larger city");
+        setError(validated?.message ?? "No match, try a nearby larger city");
       }
     } catch {
       if (id !== requestIdRef.current || controller.signal.aborted) return;

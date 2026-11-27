@@ -3,7 +3,9 @@ import { NextRequest } from "next/server";
 import { GET } from "./route";
 
 vi.mock("@/lib/security/distributed-rate-limit", () => ({
-  checkDistributedRateLimit: vi.fn(async () => ({ allowed: true, retry: 0 })),
+  checkRateLimit: vi.fn(async () => ({ allowed: true, retry: 0, distributed: false })),
+  READ_LIMITS: { limit: 30, windowMs: 60_000, prefix: "breatheeasy:read" },
+  AI_LIMITS: { limit: 10, windowMs: 60_000, prefix: "breatheeasy:ai" },
 }));
 
 function request(q: string, ip: string) {

@@ -1,15 +1,19 @@
-export async function fetchWithTimeout(
+export async function fetchWithTimeout<T>(
   url: string | URL,
   timeoutMs: number,
-): Promise<Response> {
+  fn: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    return await fn(controller.signal);
+  } catch (error) {
+    const isAbort = typeof error === "object" && error !== null && "name" in error && error.name === "AbortError";
+    if (controller.signal.aborted || isAbort) {
+      throw new Error("Request timed out");
+    }
+    throw error;
+  } finally {
     clearTimeout(timeout);
-    return response;
-  } catch {
-    clearTimeout(timeout);
-    throw new Error("Request timed out");
   }
 }

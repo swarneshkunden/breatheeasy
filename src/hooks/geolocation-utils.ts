@@ -10,6 +10,4 @@ export const POSITION_OPTIONS = {
   maximumAge: 5 * 60 * 1000,
 };
 
-export function roundCoordinate(value: number): number {
-  return Math.round(value * 100) / 100;
-}
+export { roundCoordinate } from "@/lib/security/validation";

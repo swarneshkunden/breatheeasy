@@ -1,29 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Cloud, CloudFog, CloudSun, ShieldAlert, Sun, Wind, type LucideIcon } from "lucide-react";
-import { demoAir } from "@/lib/air/demo";
-import { categorizeAqi, createRulePlan } from "@/lib/rules/engine";
 import { copy } from "@/lib/i18n";
 import { AirSnapshot, AdvicePlan, CityResult, HouseholdProfile, Language, type HourlyAir } from "@/lib/types";
+import { categorizeAqi } from "@/lib/rules/engine";
 import { exposureCigarettes } from "@/lib/impact/calculator";
-import { bestWindow, whatIfTotals } from "@/lib/presentation";
-import { useLocation } from "@/hooks/useLocation";
-import { formatLocationLabel } from "@/lib/location";
-import { profileSchema } from "@/lib/security/validation";
-import { validateAirSnapshot } from "@/lib/ai/air-validation";
 import { validateAdvicePlan } from "@/lib/ai/advice-validation";
-
-const defaultProfile: HouseholdProfile = {
-  members: ["kids", "adults"],
-  homeType: "apartment",
-  hasAc: true,
-  hasPurifier: false,
-  windows: "sealed",
-  commute: "metro",
-  cooking: "lpg",
-  budget: "medium",
-};
+import { useAirData } from "./useAirData";
+import { useHousehold } from "./useHousehold";
+import { usePlan } from "./usePlan";
+import { useChat } from "./useChat";
+import { useScenario } from "./useScenario";
 
 interface UseHomeStateReturn {
   language: Language;
@@ -80,25 +68,41 @@ interface UseHomeStateReturn {
 
 export function useHomeState(): UseHomeStateReturn {
   const [language, setLanguage] = useState<Language>("en");
-  const [demo, setDemo] = useState(true);
-  const [air, setAir] = useState<AirSnapshot>(demoAir);
-  const [profile, setProfile] = useState<HouseholdProfile>(defaultProfile);
+  const [theme, setTheme] = useState<"morning" | "dusk">("dusk");
+  const [streak, setStreak] = useState(4);
   const [onboarding, setOnboarding] = useState(false);
   const [step, setStep] = useState(0);
-  const [offline, setOffline] = useState(false);
-  const [plan, setPlan] = useState<AdvicePlan>(() => createRulePlan(demoAir, defaultProfile));
   const [chatOpen, setChatOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
-  const [streak, setStreak] = useState(4);
-  const [toolkit, setToolkit] = useState<string[]>([]);
-  const [scenarioActions, setScenarioActions] = useState(["metro", "purifier", "induction"]);
-  const [theme, setTheme] = useState<"morning" | "dusk">("dusk");
-  const [previewAqi, setPreviewAqi] = useState(demoAir.aqi);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+
+  const { demo, setDemo, air, current, fetchAir, locate, handleCitySelect, offline, timeline, locationHour } = useAirData();
+  const { profile, toggleMember, setHomeType, setPurifier, setCommute, setCooking, setBudget, saveProfile } = useHousehold();
+  const { plan, setPlan, previewAqi, previewCategory, scenarioImpact, cleanestWindow, cleanestTime, toggleScenarioAction, scenarioActions } = usePlan({ language, demo, air, profile });
+  const { toolkit, toggleTool } = useScenario();
+  const { sendChat: chatSendChat, onTipClick } = useChat({
+    language,
+    current,
+    profile,
+    onPlanReceived: (result: AdvicePlan) => {
+      const isOffline = result.smartMode === "offline";
+      const isHindi = language === "hi";
+      setPlan(result);
+      setAnswer(
+        isOffline
+          ? isHindi
+            ? "आपका व्यक्तिगत योजना तैयार है। सबसे साफ़ घंटे में बाहर जाएं और फिल्टर की हवा का लाभ लें।"
+            : "Your personalized plan is ready. Use the cleanest hours, keep vulnerable members indoors, and ventilate briefly."
+          : isHindi
+            ? "स्मार्ट मोड अभी उपलब्ध नहीं है — Gemini API सेटिंग जाँचें या सुरक्षित मूल योजना का उपयोग करें।"
+            : "Smart Mode is unavailable right now. Check the Gemini API configuration; your safe baseline plan is ready.",
+      );
+    },
+  });
 
   useEffect(() => {
     if (onboarding && modalRef.current) {
@@ -113,43 +117,6 @@ export function useHomeState(): UseHomeStateReturn {
       previousActiveElement.current = null;
     }
   }, [onboarding]);
-
-  const { requestLocation, setFollowing, following, error: locationError } = useLocation({
-    onChange: async (coords) => {
-      await fetchAir(coords.latitude, coords.longitude, true);
-      setAir((prev) => ({
-        ...prev,
-        city: formatLocationLabel(coords.latitude, coords.longitude),
-      }));
-    },
-  });
-
-  useEffect(() => {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
-    try {
-      const saved = localStorage.getItem("breatheeasy-profile");
-      if (saved) {
-        const parsed = profileSchema.safeParse(JSON.parse(saved));
-        if (parsed.success) setProfile(parsed.data);
-      }
-      const savedStreak = localStorage.getItem("breatheeasy-streak");
-      if (savedStreak) setStreak(Number(savedStreak));
-    } catch {
-      // local state remains a safe default.
-    }
-    setOffline(!navigator.onLine);
-    const update = () => setOffline(!navigator.onLine);
-    window.addEventListener("offline", update);
-    window.addEventListener("online", update);
-    return () => {
-      window.removeEventListener("offline", update);
-      window.removeEventListener("online", update);
-    };
-  }, []);
-
-  useEffect(() => {
-    setPlan(createRulePlan(demo ? demoAir : air, profile));
-  }, [demo, air, profile]);
 
   useEffect(() => {
     if (!chatOpen) return;
@@ -182,14 +149,8 @@ export function useHomeState(): UseHomeStateReturn {
     return () => panel.removeEventListener("keydown", handleKeydown);
   }, [chatOpen]);
 
-  useEffect(() => {
-    setPreviewAqi(demo ? demoAir.aqi : air.aqi);
-  }, [demo, air.aqi]);
-
-  const current = demo ? demoAir : air;
   const t = copy[language];
   const cigarettes = exposureCigarettes(current.pm25);
-  const previewCategory = categorizeAqi(previewAqi);
 
   const aqiIcons: Record<string, LucideIcon> = {
     good: Sun,
@@ -200,47 +161,6 @@ export function useHomeState(): UseHomeStateReturn {
     hazardous: ShieldAlert,
   };
   const CategoryIcon = aqiIcons[previewCategory.tone] ?? Cloud;
-
-  const scenarioImpact = whatIfTotals(scenarioActions);
-  const cleanestWindow = bestWindow(current.hourly);
-  const cleanestHour = cleanestWindow?.hour.time ?? "14:00";
-  const cleanestTime = cleanestHour.includes("T") ? cleanestHour.slice(11, 16) : cleanestHour.slice(0, 5);
-
-  const now = new Date();
-  const offsetHours = (current.utcOffsetSeconds ?? 0) / 3600;
-  const locationHour = ((now.getUTCHours() + offsetHours) % 24 + 24) % 24;
-
-  const timeline = useMemo(() => current.hourly.slice(0, 24), [current]);
-
-  const fetchAir = useCallback(async (latitude: number, longitude: number, markLive = true, cityLabel?: string) => {
-    const lat = Math.round(latitude * 100) / 100;
-    const lon = Math.round(longitude * 100) / 100;
-    try {
-      setOffline(false);
-      const response = await fetch(`/api/air?lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lon))}`);
-      if (!response.ok) throw new Error("air unavailable");
-      const result = await validateAirSnapshot(await response.json());
-      setAir({ ...result, city: cityLabel ?? result.city });
-      if (markLive) setDemo(false);
-    } catch {
-      setOffline(true);
-    }
-  }, []);
-
-  const locate = useCallback(() => {
-    requestLocation();
-  }, [requestLocation]);
-
-  const handleCitySelect = useCallback(async (city: CityResult) => {
-    const cityLabel = [city.name, city.admin1, city.country].filter(Boolean).join(", ");
-    await fetchAir(city.latitude, city.longitude, true, cityLabel);
-  }, [fetchAir]);
-
-  function offlineMessage(lang: Language) {
-    return lang === "hi"
-      ? "स्मार्ट मोड अभी उपलब्ध नहीं है — Gemini API सेटिंग जाँचें या सुरक्षित मूल योजना का उपयोग करें।"
-      : "Smart Mode is unavailable right now. Check the Gemini API configuration; your safe baseline plan is ready.";
-  }
 
   const planDay = useCallback(async () => {
     setLoading(true);
@@ -261,89 +181,30 @@ export function useHomeState(): UseHomeStateReturn {
         }),
       });
       if (!response.ok) throw new Error("offline");
-      const result = await validateAdvicePlan(await response.json());
-      setPlan(result);
-      setAnswer(result.smartMode === "offline"
-        ? offlineMessage(language)
-        : language === "hi"
-          ? "आपका व्यक्तिगत योजना तैयार है। सबसे साफ़ घंटे में बाहर जाएं और फिल्टर की हवा का लाभ लें।"
-          : "Your personalized plan is ready. Use the cleanest hours, keep vulnerable members indoors, and ventilate briefly.");
+      const body = await response.json();
+      const validated = validateAdvicePlan(body);
+      setPlan(validated);
+      const isOffline = validated.smartMode === "offline";
+      const isHindi = language === "hi";
+      setAnswer(
+        isOffline
+          ? isHindi
+            ? "आपका व्यक्तिगत योजना तैयार है। सबसे साफ़ घंटे में बाहर जाएं और फिल्टर की हवा का लाभ लें।"
+            : "Your personalized plan is ready. Use the cleanest hours, keep vulnerable members indoors, and ventilate briefly."
+          : isHindi
+            ? "स्मार्ट मोड अभी उपलब्ध नहीं है — Gemini API सेटिंग जाँचें या सुरक्षित मूल योजना का उपयोग करें।"
+            : "Smart Mode is unavailable right now. Check the Gemini API configuration; your safe baseline plan is ready.",
+      );
     } catch {
-      setAnswer(language === "hi"
-        ? "स्मार्ट मोड ऑफ़लाइन है — सुरक्षित मूल योजना आपके लिए तैयार है।"
-        : "Smart Mode offline — a safe baseline plan is ready for you.");
+      setAnswer(
+        language === "hi"
+          ? "स्मार्ट मोड ऑफ़लाइन है — सुरक्षित मूल योजना आपके लिए तैयार है।"
+          : "Smart Mode offline — a safe baseline plan is ready for you.",
+      );
     } finally {
       setLoading(false);
     }
   }, [language, current, profile, setLoading, setChatOpen, setAnswer, setPlan]);
-
-  const sendChat = useCallback(async () => {
-    if (!message.trim()) return;
-    setLoading(true);
-    const question = message;
-    setMessage("");
-    setAnswer("");
-    try {
-      const response = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: question, language, latitude: current.latitude, longitude: current.longitude, currentAqi: current.aqi, pm25: current.pm25, profile }),
-      });
-      if (!response.ok) throw new Error("offline");
-      const result = await validateAdvicePlan(await response.json());
-      setPlan(result);
-      setAnswer(result.smartMode === "offline"
-        ? offlineMessage(language)
-        : language === "hi"
-          ? "प्रश्न का उत्तर आपकी वायु स्थिति और परिवार प्रोफ़ाइल के अनुसार तैयार है।"
-          : "Answer prepared for your air conditions and household profile.");
-    } catch {
-      setAnswer("Smart Mode offline — please follow the baseline advice below.");
-    } finally {
-      setLoading(false);
-    }
-  }, [message, language, current, profile, setLoading, setMessage, setAnswer, setPlan]);
-
-  const saveProfile = useCallback(() => {
-    localStorage.setItem("breatheeasy-profile", JSON.stringify(profile));
-    setOnboarding(false);
-  }, [profile, setOnboarding]);
-
-  const toggleScenarioAction = useCallback((id: string) => {
-    setScenarioActions((selected) => selected.includes(id)
-      ? selected.filter((item) => item !== id)
-      : [...selected, id]);
-  }, [setScenarioActions]);
-
-  const toggleTool = useCallback((title: string) => {
-    setToolkit((items) => items.includes(title) ? items.filter((item) => item !== title) : [...items, title]);
-  }, [setToolkit]);
-
-  const toggleMember = useCallback((member: HouseholdProfile["members"][number]) => {
-    setProfile({ ...profile, members: profile.members.includes(member)
-      ? profile.members.filter((item) => item !== member)
-      : [...profile.members, member] });
-  }, [profile, setProfile]);
-
-  const setHomeType = useCallback((homeType: HouseholdProfile["homeType"]) => {
-    setProfile({ ...profile, homeType });
-  }, [profile, setProfile]);
-
-  const setPurifier = useCallback((checked: boolean) => {
-    setProfile({ ...profile, hasPurifier: checked });
-  }, [profile, setProfile]);
-
-  const setCommute = useCallback((commute: HouseholdProfile["commute"]) => {
-    setProfile({ ...profile, commute });
-  }, [profile, setProfile]);
-
-  const setCooking = useCallback((cooking: HouseholdProfile["cooking"]) => {
-    setProfile({ ...profile, cooking });
-  }, [profile, setProfile]);
-
-  const setBudget = useCallback((budget: HouseholdProfile["budget"]) => {
-    setProfile({ ...profile, budget });
-  }, [profile, setProfile]);
 
   const sharePledge = useCallback(async () => {
     const canvas = document.createElement("canvas");
@@ -363,7 +224,7 @@ export function useHomeState(): UseHomeStateReturn {
     context.fillText("A calmer week, one choice at a time.", 104, 240);
     context.fillStyle = "#4F6F58";
     context.font = "700 164px Georgia";
-    context.fillText(`${whatIfTotals(scenarioActions).co2AvoidedG * 7}`, 104, 520);
+    context.fillText(`${scenarioImpact.co2AvoidedG * 7}`, 104, 520);
     context.fillStyle = "#23291F";
     context.font = "600 34px sans-serif";
     context.fillText("grams of CO₂ avoided this week*", 104, 570);
@@ -389,7 +250,17 @@ export function useHomeState(): UseHomeStateReturn {
       link.click();
     }
     await navigator.clipboard?.writeText(text);
-  }, [scenarioActions]);
+  }, [scenarioImpact]);
+
+  const sendChat = useCallback(async () => {
+    if (!message.trim()) return;
+    setLoading(true);
+    setAnswer("");
+    const question = message;
+    setMessage("");
+    await chatSendChat(question);
+    setLoading(false);
+  }, [message, chatSendChat, setLoading, setAnswer, setMessage]);
 
   return {
     language,

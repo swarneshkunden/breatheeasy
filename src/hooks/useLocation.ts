@@ -33,6 +33,9 @@ export function useLocation({ onChange }: UseLocationOptions = {}) {
   const lastReadingRef = useRef<LocationReading | null>(null);
   const lastFetchRef = useRef(0);
   const wasFollowingRef = useRef(false);
+  const followingRef = useRef(false);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   const handleError = useCallback(
     (err: GeolocationPositionError) => {
@@ -74,13 +77,13 @@ export function useLocation({ onChange }: UseLocationOptions = {}) {
     setState((prev) => ({ ...prev, error: null }));
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setCoords(position, state.following);
-        onChange?.({ latitude: roundCoordinate(position.coords.latitude), longitude: roundCoordinate(position.coords.longitude) });
+        setCoords(position, followingRef.current);
+        onChangeRef.current?.({ latitude: roundCoordinate(position.coords.latitude), longitude: roundCoordinate(position.coords.longitude) });
       },
       handleError,
       POSITION_OPTIONS,
     );
-  }, [state.following, setCoords, handleError, onChange]);
+  }, [setCoords, handleError]);
 
   const setFollowing = useCallback(
     (active: boolean) => {
@@ -96,7 +99,10 @@ export function useLocation({ onChange }: UseLocationOptions = {}) {
           }));
           return;
         }
+        // Prevent duplicate watchers.
+        if (watchIdRef.current !== null) return;
         wasFollowingRef.current = true;
+        followingRef.current = true;
         watchIdRef.current = navigator.geolocation.watchPosition(
           (position) => {
             const coords: LocationCoords = {
@@ -107,7 +113,7 @@ export function useLocation({ onChange }: UseLocationOptions = {}) {
             const next: LocationReading = { ...coords, timestamp: now };
             const refresh = shouldRefetch(lastReadingRef.current, next, now);
             setCoords(position, true);
-            if (refresh && lastReadingRef.current) onChange?.(coords);
+            if (refresh && lastReadingRef.current) onChangeRef.current?.(coords);
             lastReadingRef.current = next;
           },
           handleError,
@@ -120,12 +126,14 @@ export function useLocation({ onChange }: UseLocationOptions = {}) {
           watchIdRef.current = null;
         }
         wasFollowingRef.current = false;
+        followingRef.current = false;
         setState((prev) => ({ ...prev, following: false }));
       }
     },
-    [setCoords, handleError, onChange],
+    [setCoords, handleError],
   );
 
+  // Register visibility listener once; never clear the watcher in cleanup except on unmount.
   useEffect(() => {
     const onVisibilityChange = () => {
       if (document.hidden) {
@@ -133,7 +141,7 @@ export function useLocation({ onChange }: UseLocationOptions = {}) {
           navigator.geolocation.clearWatch(watchIdRef.current);
           watchIdRef.current = null;
         }
-        if (state.following) wasFollowingRef.current = true;
+        if (followingRef.current) wasFollowingRef.current = true;
         setState((prev) => ({ ...prev, following: false }));
       } else if (wasFollowingRef.current) {
         setFollowing(true);
@@ -141,13 +149,19 @@ export function useLocation({ onChange }: UseLocationOptions = {}) {
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
+
+  // Unmount cleanup: clear watcher if active.
+  useEffect(() => {
+    return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
-      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [state.following, setFollowing]);
+  }, []);
 
   return {
     ...state,
