@@ -17,7 +17,7 @@ export default function Home() {
     step, setStep, offline, plan, chatOpen, setChatOpen, message, setMessage,
     answer, loading, setLoading, streak, toolkit, scenarioActions, theme, setTheme,
     previewAqi, current, t, cigarettes, previewCategory, CategoryIcon,
-    scenarioImpact, cleanestWindow, cleanestTime, timeline, locationHour,
+    scenarioImpact, cleanestWindow, cleanestTime, timeline, locationHour, following, locationError, setFollowing,
     fetchAir, locate, handleCitySelect, planDay, sendChat, saveProfile, sharePledge,
     toggleScenarioAction, toggleTool, toggleMember, setHomeType, setPurifier,
     setCommute, setCooking, setBudget,
@@ -56,9 +56,9 @@ export default function Home() {
           loading={loading}
           onPlanDay={planDay}
           onLocate={locate}
-          onToggleFollow={() => {}}
-          following={false}
-          locationError={null}
+          onToggleFollow={() => setFollowing(!following)}
+          following={following}
+          locationError={locationError}
           onCitySelect={handleCitySelect}
         />
 

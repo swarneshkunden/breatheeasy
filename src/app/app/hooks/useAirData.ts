@@ -18,6 +18,9 @@ interface UseAirDataReturn {
   offline: boolean;
   timeline: HourlyAir[];
   locationHour: number;
+  following: boolean;
+  locationError: string | null;
+  setFollowing: (active: boolean) => void;
 }
 
 export function useAirData(): UseAirDataReturn {
@@ -25,7 +28,12 @@ export function useAirData(): UseAirDataReturn {
   const [air, setAir] = useState<AirSnapshot>(demoAir);
   const [offline, setOffline] = useState(false);
 
-  const { requestLocation, setFollowing, following, error: locationError } = useLocation({
+  const {
+    requestLocation,
+    setFollowing,
+    following,
+    error: locationError,
+  } = useLocation({
     onChange: async (coords) => {
       await fetchAir(coords.latitude, coords.longitude, true);
       setAir((prev) => ({
@@ -89,5 +97,8 @@ export function useAirData(): UseAirDataReturn {
     offline,
     timeline,
     locationHour,
+    following,
+    locationError,
+    setFollowing,
   };
 }

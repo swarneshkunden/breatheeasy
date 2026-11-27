@@ -42,4 +42,38 @@ describe("geocode route", () => {
     // Either 200 (if fetch works) or 502 (if network unavailable in test env)
     expect([200, 502]).toContain(response.status);
   });
+
+  it("returns a results object contract, not a bare array", async () => {
+    // This test verifies the response contract shape.
+    // Mock fetch to return a valid city results payload.
+    const mockFetch = vi.fn(async () =>
+      Response.json({
+        results: [
+          {
+            name: "New Delhi",
+            admin1: "Delhi",
+            country: "India",
+            latitude: 28.6139,
+            longitude: 77.209,
+          },
+        ],
+      }),
+    );
+    const originalFetch = global.fetch;
+    (global as any).fetch = mockFetch;
+
+    try {
+      const response = await GET(request("delhi", "192.0.2.1"));
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      // Contract: backend returns { results: [...] }, never a bare array.
+      expect(body).toHaveProperty("results");
+      expect(Array.isArray(body)).toBe(false);
+      expect(body.results).toHaveLength(1);
+      expect(body.results[0].name).toBe("New Delhi");
+    } finally {
+      (global as any).fetch = originalFetch;
+      mockFetch.mockRestore();
+    }
+  });
 });

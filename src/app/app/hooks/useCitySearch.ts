@@ -82,13 +82,8 @@ export function useCitySearch({ onSelect }: UseCitySearchProps) {
         },
       );
       if (id !== requestIdRef.current || controller.signal.aborted) return;
-      if (Array.isArray(validated)) {
-        const cityValidated = validateCityResults(validated);
-        setResults(cityValidated);
-      } else {
-        setResults([]);
-        setError(validated?.message ?? "No match, try a nearby larger city");
-      }
+      const cityValidated = validateCityResults(validated);
+      setResults(cityValidated);
     } catch {
       if (id !== requestIdRef.current || controller.signal.aborted) return;
       setResults([]);

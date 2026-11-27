@@ -8,10 +8,19 @@ export const cityResultSchema = z.object({
   longitude: z.number(),
 });
 
+export const cityResponseSchema = z.object({
+  results: z.array(cityResultSchema),
+});
+
 export type ValidatedCityResult = z.infer<typeof cityResultSchema>;
+export type ValidatedCityResponse = z.infer<typeof cityResponseSchema>;
+
+export function validateCityResponse(data: unknown): ValidatedCityResponse {
+  const result = cityResponseSchema.safeParse(data);
+  if (!result.success) throw new Error("Invalid city results response");
+  return result.data;
+}
 
 export function validateCityResults(data: unknown): ValidatedCityResult[] {
-  const results = z.array(cityResultSchema).safeParse(data);
-  if (!results.success) throw new Error("Invalid city results response");
-  return results.data;
+  return validateCityResponse(data).results;
 }

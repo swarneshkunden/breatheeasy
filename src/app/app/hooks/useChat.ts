@@ -13,16 +13,9 @@ interface UseChatInput {
 
 interface UseChatReturn {
   sendChat: (message: string) => Promise<void>;
-  onTipClick: (title: string) => void;
 }
 
 export function useChat({ language, current, profile, onPlanReceived }: UseChatInput): UseChatReturn {
-  function offlineMessage(lang: Language) {
-    return lang === "hi"
-      ? "स्मार्ट मोड अभी उपलब्ध नहीं है — Gemini API सेटिंग जाँचें या सुरक्षित मूल योजना का उपयोग करें।"
-      : "Smart Mode is unavailable right now. Check the Gemini API configuration; your safe baseline plan is ready.";
-  }
-
   const sendChat = useCallback(async (message: string) => {
     if (!message.trim()) return;
     try {
@@ -45,12 +38,7 @@ export function useChat({ language, current, profile, onPlanReceived }: UseChatI
     }
   }, [language, current, profile, onPlanReceived]);
 
-  const onTipClick = useCallback((title: string) => {
-    // Tip click is handled by the parent component setting the message.
-  }, []);
-
   return {
     sendChat,
-    onTipClick,
   };
 }

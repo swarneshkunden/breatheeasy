@@ -49,6 +49,9 @@ interface UseHomeStateReturn {
   cleanestTime: string;
   timeline: HourlyAir[];
   locationHour: number;
+  following: boolean;
+  locationError: string | null;
+  setFollowing: (active: boolean) => void;
   fetchAir: (latitude: number, longitude: number, markLive?: boolean, cityLabel?: string) => Promise<void>;
   locate: () => void;
   handleCitySelect: (city: CityResult) => void;
@@ -80,11 +83,11 @@ export function useHomeState(): UseHomeStateReturn {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
 
-  const { demo, setDemo, air, current, fetchAir, locate, handleCitySelect, offline, timeline, locationHour } = useAirData();
+  const { demo, setDemo, air, current, fetchAir, locate, handleCitySelect, offline, timeline, locationHour, following, locationError, setFollowing } = useAirData();
   const { profile, toggleMember, setHomeType, setPurifier, setCommute, setCooking, setBudget, saveProfile } = useHousehold();
   const { plan, setPlan, previewAqi, previewCategory, scenarioImpact, cleanestWindow, cleanestTime, toggleScenarioAction, scenarioActions } = usePlan({ language, demo, air, profile });
   const { toolkit, toggleTool } = useScenario();
-  const { sendChat: chatSendChat, onTipClick } = useChat({
+  const { sendChat: chatSendChat } = useChat({
     language,
     current,
     profile,
@@ -95,11 +98,11 @@ export function useHomeState(): UseHomeStateReturn {
       setAnswer(
         isOffline
           ? isHindi
-            ? "आपका व्यक्तिगत योजना तैयार है। सबसे साफ़ घंटे में बाहर जाएं और फिल्टर की हवा का लाभ लें।"
-            : "Your personalized plan is ready. Use the cleanest hours, keep vulnerable members indoors, and ventilate briefly."
-          : isHindi
             ? "स्मार्ट मोड अभी उपलब्ध नहीं है — Gemini API सेटिंग जाँचें या सुरक्षित मूल योजना का उपयोग करें।"
-            : "Smart Mode is unavailable right now. Check the Gemini API configuration; your safe baseline plan is ready.",
+            : "Smart Mode is unavailable right now. Check the Gemini API configuration; your safe baseline plan is ready."
+          : isHindi
+            ? "आपका व्यक्तिगत योजना तैयार है। सबसे साफ़ घंटे में बाहर जाएं और फिल्टर की हवा का लाभ लें।"
+            : "Your personalized plan is ready. Use the cleanest hours, keep vulnerable members indoors, and ventilate briefly.",
       );
     },
   });
@@ -189,11 +192,11 @@ export function useHomeState(): UseHomeStateReturn {
       setAnswer(
         isOffline
           ? isHindi
-            ? "आपका व्यक्तिगत योजना तैयार है। सबसे साफ़ घंटे में बाहर जाएं और फिल्टर की हवा का लाभ लें।"
-            : "Your personalized plan is ready. Use the cleanest hours, keep vulnerable members indoors, and ventilate briefly."
-          : isHindi
             ? "स्मार्ट मोड अभी उपलब्ध नहीं है — Gemini API सेटिंग जाँचें या सुरक्षित मूल योजना का उपयोग करें।"
-            : "Smart Mode is unavailable right now. Check the Gemini API configuration; your safe baseline plan is ready.",
+            : "Smart Mode is unavailable right now. Check the Gemini API configuration; your safe baseline plan is ready."
+          : isHindi
+            ? "आपका व्यक्तिगत योजना तैयार है। सबसे साफ़ घंटे में बाहर जाएं और फिल्टर की हवा का लाभ लें।"
+            : "Your personalized plan is ready. Use the cleanest hours, keep vulnerable members indoors, and ventilate briefly.",
       );
     } catch {
       setAnswer(
@@ -298,6 +301,9 @@ export function useHomeState(): UseHomeStateReturn {
     cleanestTime,
     timeline,
     locationHour,
+    following,
+    locationError,
+    setFollowing,
     fetchAir,
     locate,
     handleCitySelect,
