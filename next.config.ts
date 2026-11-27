@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   turbopack: { root: __dirname },
   reactStrictMode: true,
   experimental: {
-    optimizePackageImports: ["lucide-react", "framer-motion"],
+    optimizePackageImports: ["lucide-react"],
   },
 };
 
