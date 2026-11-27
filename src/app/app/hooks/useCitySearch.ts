@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CityResult } from "@/lib/types";
+import { validateCityResults } from "@/lib/ai/city-validation";
 
 interface UseCitySearchProps {
   onSelect: (city: CityResult) => void;
@@ -75,7 +76,8 @@ export function useCitySearch({ onSelect }: UseCitySearchProps) {
       const body = await response.json();
       if (id !== requestIdRef.current) return;
       if (Array.isArray(body)) {
-        setResults(body as CityResult[]);
+        const validated = validateCityResults(body);
+        setResults(validated);
       } else {
         setResults([]);
         setError(body?.message ?? "No match, try a nearby larger city");

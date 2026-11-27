@@ -10,6 +10,9 @@ import { exposureCigarettes } from "@/lib/impact/calculator";
 import { bestWindow, whatIfTotals } from "@/lib/presentation";
 import { useLocation } from "@/hooks/useLocation";
 import { formatLocationLabel } from "@/lib/location";
+import { profileSchema } from "@/lib/security/validation";
+import { validateAirSnapshot } from "@/lib/ai/air-validation";
+import { validateAdvicePlan } from "@/lib/ai/advice-validation";
 
 const defaultProfile: HouseholdProfile = {
   members: ["kids", "adults"],
@@ -99,7 +102,8 @@ export function useHomeState(): UseHomeStateReturn {
 
   useEffect(() => {
     if (onboarding && modalRef.current) {
-      previousActiveElement.current = document.activeElement as HTMLElement;
+      const active = document.activeElement;
+      previousActiveElement.current = active instanceof HTMLElement ? active : null;
       const focusable = modalRef.current.querySelector<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       );
@@ -124,7 +128,10 @@ export function useHomeState(): UseHomeStateReturn {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     try {
       const saved = localStorage.getItem("breatheeasy-profile");
-      if (saved) setProfile(JSON.parse(saved) as HouseholdProfile);
+      if (saved) {
+        const parsed = profileSchema.safeParse(JSON.parse(saved));
+        if (parsed.success) setProfile(parsed.data);
+      }
       const savedStreak = localStorage.getItem("breatheeasy-streak");
       if (savedStreak) setStreak(Number(savedStreak));
     } catch {
@@ -212,7 +219,7 @@ export function useHomeState(): UseHomeStateReturn {
       setOffline(false);
       const response = await fetch(`/api/air?lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lon))}`);
       if (!response.ok) throw new Error("air unavailable");
-      const result = await response.json() as AirSnapshot;
+      const result = await validateAirSnapshot(await response.json());
       setAir({ ...result, city: cityLabel ?? result.city });
       if (markLive) setDemo(false);
     } catch {
@@ -254,7 +261,7 @@ export function useHomeState(): UseHomeStateReturn {
         }),
       });
       if (!response.ok) throw new Error("offline");
-      const result = await response.json() as AdvicePlan;
+      const result = await validateAdvicePlan(await response.json());
       setPlan(result);
       setAnswer(result.smartMode === "offline"
         ? offlineMessage(language)
@@ -283,7 +290,7 @@ export function useHomeState(): UseHomeStateReturn {
         body: JSON.stringify({ message: question, language, latitude: current.latitude, longitude: current.longitude, currentAqi: current.aqi, pm25: current.pm25, profile }),
       });
       if (!response.ok) throw new Error("offline");
-      const result = await response.json() as AdvicePlan;
+      const result = await validateAdvicePlan(await response.json());
       setPlan(result);
       setAnswer(result.smartMode === "offline"
         ? offlineMessage(language)

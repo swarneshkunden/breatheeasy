@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { roundCoordinate } from "@/lib/security/validation";
-import { checkRateLimit } from "@/lib/security/rateLimit";
+import { checkDistributedRateLimit } from "@/lib/security/distributed-rate-limit";
 import { fetchWithTimeout } from "@/lib/security/fetchWithTimeout";
 
 const schema = z.object({
@@ -23,7 +23,7 @@ function pick<T>(array: T[] | undefined, index: number, fallback: T) {
 
 export async function GET(request: NextRequest) {
   const ip = clientIp(request);
-  const limit = checkRateLimit(ip);
+  const limit = await checkDistributedRateLimit(ip);
   if (!limit.allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(limit.retry) } });
   }

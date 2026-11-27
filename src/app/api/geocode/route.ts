@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { roundCoordinate } from "@/lib/security/validation";
-import { checkRateLimit } from "@/lib/security/rateLimit";
+import { checkDistributedRateLimit } from "@/lib/security/distributed-rate-limit";
 import { fetchWithTimeout } from "@/lib/security/fetchWithTimeout";
+import { validateCityResults } from "@/lib/ai/city-validation";
 
 const schema = z.object({
   q: z.string().trim().min(2).max(80),
@@ -28,7 +29,7 @@ function clientIp(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const ip = clientIp(request);
-  const limit = checkRateLimit(ip);
+  const limit = await checkDistributedRateLimit(ip);
   if (!limit.allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(limit.retry) } });
   }
@@ -54,10 +55,8 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       return NextResponse.json({ error: "City search unavailable" }, { status: 502 });
     }
-    const data = await response.json() as {
-      results?: Array<{ name: string; admin1?: string; country?: string; latitude: number; longitude: number }>;
-    };
-    const results = (data.results ?? []).map((item) => ({
+    const validated = validateCityResults(await response.json());
+    const results = validated.map((item) => ({
       name: item.name,
       admin1: item.admin1,
       country: item.country,

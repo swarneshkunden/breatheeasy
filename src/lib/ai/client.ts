@@ -1,4 +1,5 @@
 import type { AiClient } from "./types";
+import { validateGeminiResponse } from "./gemini-validation";
 
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent";
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -76,7 +77,7 @@ export class GeminiAiClient implements AiClient {
         cache: "no-store",
       });
       if (!response.ok) throw new GeminiHttpError(response.status);
-      const payload = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+      const payload = validateGeminiResponse(await response.json());
       const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) throw new Error("Empty AI response");
       return text;
