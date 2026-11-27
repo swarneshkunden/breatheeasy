@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { roundCoordinate } from "@/lib/security/validation";
+import { clientIp, roundCoordinate } from "@/lib/security/validation";
 import { checkRateLimit, READ_LIMITS } from "@/lib/security/distributed-rate-limit";
 import { fetchWithTimeout } from "@/lib/security/fetchWithTimeout";
 import { BoundedCache } from "@/lib/security/bounded-cache";
@@ -34,10 +34,6 @@ function appLanguage(request: NextRequest) {
   const accept = request.headers.get("accept-language") ?? "en";
   const primary = accept.split(",")[0]?.split("-")[0]?.trim() || "en";
   return /^[a-z]{2}$/i.test(primary) ? primary.toLowerCase() : "en";
-}
-
-function clientIp(request: NextRequest) {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
 }
 
 export async function GET(request: NextRequest) {

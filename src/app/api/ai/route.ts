@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { clientIp } from "@/lib/security/validation";
 import { checkRateLimit, AI_LIMITS } from "@/lib/security/distributed-rate-limit";
 import { csrfGuard } from "@/lib/security/csrf";
 import { generateAiPlan } from "@/lib/ai/plan-service";
@@ -9,23 +10,12 @@ export const maxDuration = 70;
 
 const MAX_REQUEST_BODY_BYTES = 16000;
 
-function clientIp(request: NextRequest) {
-  // Prefer standardized client-ip headers over x-forwarded-for which can be spoofed.
-  return (
-    request.headers.get("x-real-ip")?.trim() ||
-    request.headers.get("x-client-ip")?.trim() ||
-    request.headers.get("cf-connecting-ip")?.trim() ||
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "local"
-  );
-}
-
 async function readBodyWithLimit(request: NextRequest, maxBytes: number): Promise<{ ok: true; text: string } | { ok: false; status: number }> {
   // Early rejection via Content-Length when available.
   const contentLength = request.headers.get("content-length");
   if (contentLength) {
     const len = Number.parseInt(contentLength, 10);
-    if (!Number.isFinite(len) || len > maxBytes) {
+    if (!Number.isFinite(len) || len <= 0 || len > maxBytes) {
       return { ok: false, status: 413 };
     }
   }
@@ -38,6 +28,7 @@ async function readBodyWithLimit(request: NextRequest, maxBytes: number): Promis
 
   const chunks: Uint8Array[] = [];
   let total = 0;
+  let released = false;
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -46,6 +37,7 @@ async function readBodyWithLimit(request: NextRequest, maxBytes: number): Promis
         total += value.byteLength;
         if (total > maxBytes) {
           reader.releaseLock();
+          released = true;
           return { ok: false, status: 413 };
         }
         chunks.push(value);
@@ -54,7 +46,9 @@ async function readBodyWithLimit(request: NextRequest, maxBytes: number): Promis
   } catch {
     return { ok: false, status: 400 };
   } finally {
-    reader.releaseLock();
+    if (!released) {
+      reader.releaseLock();
+    }
   }
 
   return { ok: true, text: new TextDecoder().decode(Buffer.concat(chunks)) };

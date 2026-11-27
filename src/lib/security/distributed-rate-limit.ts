@@ -18,59 +18,57 @@ const AI_LIMITS: RateLimitConfig = { limit: 10, windowMs: 60_000, prefix: "breat
 let redisClient: any = null;
 let redisReady = false;
 let redisInitError: Error | null = null;
+let fallbackCount = 0;
 
-function initRedis() {
+function initRedis(): void {
   if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
     redisInitError = new Error("Upstash Redis not configured");
+    redisReady = false;
     return;
   }
-  try {
-    // Dynamic import only when Redis is configured.
-    redisClient = null; // will be set below lazily
-    redisInitError = null;
-    redisReady = true;
-  } catch (error) {
-    redisInitError = error instanceof Error ? error : new Error(String(error));
-    redisReady = false;
-  }
+  redisInitError = null;
+  redisReady = true;
 }
 
 initRedis();
 
-async function getRedis() {
+async function getRedis(): Promise<any | null> {
   if (!redisReady || redisInitError) return null;
   if (redisClient) return redisClient;
-  const { Redis } = await import("@upstash/redis");
-  redisClient = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-  });
-  return redisClient;
-}
-
-async function getRatelimit() {
-  const { Ratelimit } = await import("@upstash/ratelimit");
-  return Ratelimit;
+  try {
+    const { Redis } = await import("@upstash/redis");
+    redisClient = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    });
+    return redisClient;
+  } catch (error) {
+    redisInitError = error instanceof Error ? error : new Error(String(error));
+    redisReady = false;
+    return null;
+  }
 }
 
 export async function checkRateLimit(
   ip: string,
   config: RateLimitConfig = READ_LIMITS,
 ): Promise<RateLimitResult> {
-  // If Redis is configured but not yet initialized or errored, fall back to in-memory.
+  // If Redis is not configured or not ready, use bounded in-memory fallback.
   if (!redisReady || redisInitError || !process.env.UPSTASH_REDIS_REST_URL) {
+    fallbackCount += 1;
     const result = checkInMemoryRateLimit(ip, config.limit, config.windowMs);
     return { ...result, distributed: false };
   }
 
   const redis = await getRedis();
   if (!redis) {
+    fallbackCount += 1;
     const result = checkInMemoryRateLimit(ip, config.limit, config.windowMs);
     return { ...result, distributed: false };
   }
 
   try {
-    const Ratelimit = await getRatelimit();
+    const { Ratelimit } = await import("@upstash/ratelimit");
     const limiter = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(config.limit, `${Math.floor(config.windowMs / 1000)} s`),
@@ -84,9 +82,11 @@ export async function checkRateLimit(
     };
   } catch {
     // Redis runtime error: fall back to in-memory for this request only.
+    fallbackCount += 1;
     const result = checkInMemoryRateLimit(ip, config.limit, config.windowMs);
     return { ...result, distributed: false };
   }
 }
 
 export { READ_LIMITS, AI_LIMITS };
+export { fallbackCount };

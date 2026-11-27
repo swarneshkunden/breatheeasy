@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { z } from "zod";
 
 export const profileSchema = z.object({
@@ -23,4 +24,15 @@ export const aiRequestSchema = z.object({
 
 export function roundCoordinate(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+export function clientIp(request: NextRequest): string {
+  // Prefer standardized client-ip headers over x-forwarded-for which can be spoofed.
+  return (
+    request.headers.get("x-real-ip")?.trim() ||
+    request.headers.get("x-client-ip")?.trim() ||
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "local"
+  );
 }
