@@ -15,7 +15,6 @@ function log(level: LogLevel, message: string, extra: Record<string, unknown> = 
     timestamp: new Date().toISOString(),
     ...extra,
   };
-  // eslint-disable-next-line no-console
   console.log(JSON.stringify(entry));
 }
 
