@@ -7,29 +7,6 @@ export const AQI_THRESHOLDS = {
   HAZARDOUS: 400,
 } as const;
 
-export const ANIMATION_DURATION_MS = 300;
-export const GEOCODE_DEBOUNCE_MS = 300;
-export const GEOCODE_CACHE_TTL_MS = 60 * 60 * 1000;
-export const RATE_LIMIT = {
-  WINDOW_MS: 60_000,
-  MAX_REQUESTS: 10,
-} as const;
-
-export const CLEAN_AIR_STREAK_MAX_DAYS = 7;
-export const CO2_PER_KM_PETROL_CAR_G = 170;
-export const CO2_PER_KM_METRO_G = 28;
-export const CIGARETTE_EQUIVALENT_PM25_G = 22;
-export const AQI_PREVIEW_RANGE = {
-  MIN: 20,
-  MAX: 400,
-  STEP: 1,
-} as const;
-
-export const AQI_DISPLAY_THRESHOLDS = {
-  INDOORS_UNHEALTHY: 150,
-  CHOOSE_MOMENTS: 100,
-} as const;
-
 export const ADVICE_SCORES = {
   KEEP_USING_METRO: 95,
   EXERCISE_CLEANER_WINDOW: 90,

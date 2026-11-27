@@ -45,10 +45,11 @@ export function AirDisplay({
           <p className="location-caption">A softer way to read the air around you</p>
         </div>
         <div className="location-tools">
-          <button className="secondary location-button" onClick={onLocate} aria-hidden={true} />
+          <button className="secondary location-button" onClick={onLocate} aria-label="Use my current location" />
           <button
             className={`secondary location-button ${following ? "location-active" : ""}`}
             aria-pressed={following}
+            aria-label={following ? "Stop following location" : "Follow my location"}
             onClick={onToggleFollow}
           >
             {following ? "Following location" : "Follow my location"}
@@ -61,8 +62,8 @@ export function AirDisplay({
 
       <div className="hero-grid">
         <div className="hero-copy">
-          <div className={`category category-${previewCategory.tone}`}><CategoryIcon size={16} strokeWidth={1.8} aria-hidden="true" /><span>{previewCategory.label}</span></div>
-          <strong className="aqi-number animate-in" key={previewAqi}>{previewAqi}</strong>
+          <div className={`category category-${previewCategory.tone}`}><CategoryIcon size={16} strokeWidth={1.8} aria-hidden="true" /><span aria-label={`Air quality: ${previewCategory.label}`}>{previewCategory.label}</span></div>
+          <strong className="aqi-number animate-in" key={previewAqi} aria-live="polite">{previewAqi}</strong>
           <span className="aqi-unit">US AQI <span>·</span> {current.updatedAt ? "Updated just now" : "Current reading"}</span>
           <h2>{previewAqi > 200 ? "Keep the family indoors" : previewAqi > 100 ? "Choose your outside moments" : "A little more room to breathe"}</h2>
           <p>{previewAqi > 200
@@ -74,16 +75,20 @@ export function AirDisplay({
 
       <div className="pollutant-grid" aria-label="Pollutant readings">
         {[
-          ["PM2.5", current.pm25, "µg/m³", "Fine particles"],
-          ["PM10", current.pm10, "µg/m³", "Coarse particles"],
-          ["NO₂", current.no2, "µg/m³", "Traffic gas"],
-          ["O₃", current.o3, "µg/m³", "Ground-level ozone"],
+          ["PM2.5", current.pm25, "µg/m³", "Fine particles from combustion and dust"],
+          ["PM10", current.pm10, "µg/m³", "Coarse particles from construction and roads"],
+          ["NO₂", current.no2, "µg/m³", "Traffic exhaust gas"],
+          ["O₃", current.o3, "µg/m³", "Ground-level ozone (smog)"],
         ].map(([label, value, unit, note]) => (
           <div className="pollutant" key={label}>
             <span>{label}</span><strong>{value}</strong><small>{unit}</small>
             <span className="pollutant-note">{note}</span>
           </div>
         ))}
+      </div>
+
+      <div className="data-attribution" aria-label="Data source">
+        <p>Air quality data from Open-Meteo · AQI calculated using US EPA standards · Location rounded before server use</p>
       </div>
     </section>
   );
