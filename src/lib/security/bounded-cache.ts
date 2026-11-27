@@ -21,6 +21,9 @@ export class BoundedCache<T> {
       this.map.delete(key);
       return undefined;
     }
+    // Mark as recently used by deleting and re-inserting (moves to end of Map).
+    this.map.delete(key);
+    this.map.set(key, entry);
     return entry.data;
   }
 
@@ -32,8 +35,12 @@ export class BoundedCache<T> {
         this.map.delete(k);
       }
     }
-    // Enforce max size: evict oldest entry if at capacity.
-    if (this.map.size >= this.maxSize && !this.map.has(key)) {
+    // If key already exists, delete and re-insert to mark as recently used.
+    if (this.map.has(key)) {
+      this.map.delete(key);
+    }
+    // Enforce max size: evict least recently used (first entry).
+    if (this.map.size >= this.maxSize) {
       const firstKey = this.map.keys().next().value;
       if (firstKey !== undefined) {
         this.map.delete(firstKey);
