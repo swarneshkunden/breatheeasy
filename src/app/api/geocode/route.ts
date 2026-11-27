@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { roundCoordinate } from "@/lib/security/validation";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { fetchWithTimeout } from "@/lib/security/fetchWithTimeout";
 
 const schema = z.object({
   q: z.string().trim().min(2).max(80),
@@ -48,11 +49,8 @@ export async function GET(request: NextRequest) {
   const url = new URL(GEOCODE_HOST);
   url.search = new URLSearchParams({ name: q, count: "5", language: appLanguage(request), format: "json" }).toString();
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const response = await fetch(url, { signal: controller.signal, cache: "no-store" });
-    clearTimeout(timeout);
+    const response = await fetchWithTimeout(url, 5000);
     if (!response.ok) {
       return NextResponse.json({ error: "City search unavailable" }, { status: 502 });
     }
@@ -73,7 +71,6 @@ export async function GET(request: NextRequest) {
     cache.set(q, { data: body, expiry: now + CACHE_MS });
     return NextResponse.json(body);
   } catch {
-    clearTimeout(timeout);
     return NextResponse.json({ error: "City search unavailable" }, { status: 502 });
   }
 }

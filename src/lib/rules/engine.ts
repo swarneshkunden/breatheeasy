@@ -1,12 +1,13 @@
 import { AdvicePlan, AirSnapshot, HouseholdProfile, AdviceTip } from "../types";
 import { exposureCigarettes, purifierImpact, tripImpact } from "../impact/calculator";
+import { AQI_THRESHOLDS, ADVICE_SCORES } from "../constants";
 
 export function categorizeAqi(aqi: number) {
-  if (aqi <= 50) return { label: "Good", tone: "good", color: "#6F8F72" };
-  if (aqi <= 100) return { label: "Moderate", tone: "moderate", color: "#C2A25A" };
-  if (aqi <= 150) return { label: "Unhealthy for sensitive groups", tone: "sensitive", color: "#C98A4B" };
-  if (aqi <= 200) return { label: "Unhealthy", tone: "unhealthy", color: "#B5654A" };
-  if (aqi <= 300) return { label: "Very unhealthy", tone: "very-unhealthy", color: "#8A4B5C" };
+  if (aqi <= AQI_THRESHOLDS.GOOD) return { label: "Good", tone: "good", color: "#6F8F72" };
+  if (aqi <= AQI_THRESHOLDS.MODERATE) return { label: "Moderate", tone: "moderate", color: "#C2A25A" };
+  if (aqi <= AQI_THRESHOLDS.SENSITIVE) return { label: "Unhealthy for sensitive groups", tone: "sensitive", color: "#C98A4B" };
+  if (aqi <= AQI_THRESHOLDS.UNHEALTHY) return { label: "Unhealthy", tone: "unhealthy", color: "#B5654A" };
+  if (aqi <= AQI_THRESHOLDS.VERY_UNHEALTHY) return { label: "Very unhealthy", tone: "very-unhealthy", color: "#8A4B5C" };
   return { label: "Hazardous", tone: "hazardous", color: "#5A3E3A" };
 }
 
@@ -23,7 +24,7 @@ export function createRulePlan(air: AirSnapshot, profile: HouseholdProfile): Adv
         ? "Take metro or a shared bus for the 5 km work or school trip."
         : "Group errands and walk or cycle short distances at the cleanest hour.",
       impact: `Avoids about ${trip.co2AvoidedG} g CO2 and ${trip.noxAvoidedG} g NOx per trip.`,
-      score: 95,
+      score: ADVICE_SCORES.KEEP_USING_METRO,
     },
     {
       title: air.aqi > 150 ? "Move school drop-off earlier" : "Exercise in the cleaner window",
@@ -31,7 +32,7 @@ export function createRulePlan(air: AirSnapshot, profile: HouseholdProfile): Adv
         ? "Keep vulnerable family members indoors during the worst hour and shorten unavoidable outdoor exposure."
         : "Choose the lowest-AQI hour shown in the forecast.",
       impact: "Reduces avoidable peak exposure while preserving daily routine.",
-      score: 90,
+      score: ADVICE_SCORES.EXERCISE_CLEANER_WINDOW,
     },
   ];
 
@@ -42,13 +43,13 @@ export function createRulePlan(air: AirSnapshot, profile: HouseholdProfile): Adv
         ? "Run the purifier in the bedroom 30 minutes before sleep."
         : "Use a sealed-window room and consider a DIY Corsi-Rosenthal fan-filter for low-cost filtration.",
       impact: `Estimated indoor PM2.5 reduction: about ${purifier}%, subject to room size and CADR.`,
-      score: 92,
+      score: ADVICE_SCORES.PURIFIER_BEDROOM,
     },
     {
       title: "Ventilate only at the cleaner hour",
       detail: "Open windows briefly when the forecasted AQI reaches its lowest point; use a wet mop rather than dry sweeping.",
       impact: `Today's PM2.5 is roughly equivalent to ${cigarettes} cigarettes over 24 hours as an approximation.`,
-      score: 82,
+      score: ADVICE_SCORES.VENTILATE_CLEANER_HOUR,
     },
   ];
 
@@ -59,7 +60,7 @@ export function createRulePlan(air: AirSnapshot, profile: HouseholdProfile): Adv
         ? "Where practical, use LPG or induction and ventilate cooking smoke outdoors."
         : "Cover pans, cook at a suitable heat, and use the exhaust fan.",
       impact: "Cuts household combustion emissions and reduces indoor PM exposure.",
-      score: 88,
+      score: ADVICE_SCORES.USE_INDUCTION,
     },
   ];
 

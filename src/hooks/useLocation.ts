@@ -1,5 +1,7 @@
 "use client";
 
+// useLocation is a single cohesive geolocation hook (one-shot + follow modes, error handling, visibility management) — justified over 150 lines.
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { shouldRefetch, formatLocationLabel, type LocationReading } from "@/lib/location";
 

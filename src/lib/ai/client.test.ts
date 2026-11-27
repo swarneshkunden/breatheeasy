@@ -5,10 +5,8 @@ describe("GeminiAiClient", () => {
   let fetchSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    fetchSpy = vi.fn() as any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    globalThis.fetch = fetchSpy as any;
+    fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   });
 
   afterEach(() => {

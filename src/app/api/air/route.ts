@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { roundCoordinate } from "@/lib/security/validation";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { fetchWithTimeout } from "@/lib/security/fetchWithTimeout";
 
 const schema = z.object({
   lat: z.coerce.number().min(-90).max(90),
@@ -54,11 +55,8 @@ export async function GET(request: NextRequest) {
     timezone: "auto",
   }).toString();
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const response = await fetch(url, { signal: controller.signal, cache: "no-store" });
-    clearTimeout(timeout);
+    const response = await fetchWithTimeout(url, 5000);
     if (!response.ok) {
       return NextResponse.json({ error: "Air data temporarily unavailable" }, { status: 502 });
     }
@@ -105,7 +103,6 @@ export async function GET(request: NextRequest) {
     cache.set(key, { data: body, expiry: now + CACHE_MS });
     return NextResponse.json(body);
   } catch {
-    clearTimeout(timeout);
     return NextResponse.json({ error: "Air data temporarily unavailable" }, { status: 502 });
   }
 }

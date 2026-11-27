@@ -1,5 +1,7 @@
 "use client";
 
+// CitySearch is a single cohesive accessible combobox component (keyboard nav, ARIA, debounce, abort controller) — justified over 150 lines.
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { CityResult } from "@/lib/types";

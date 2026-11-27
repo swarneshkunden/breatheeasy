@@ -85,7 +85,6 @@ export async function POST(request: NextRequest) {
 
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey || /^your_.+_here$/i.test(apiKey)) {
-    console.error("Smart Mode fallback", { reason: "missing_api_key" });
     return NextResponse.json({ ...fallback, smartMode: "offline", smartModeReason: "missing_api_key" });
   }
 
@@ -100,7 +99,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const reason = getSmartModeReason(error);
     const status = error instanceof GeminiHttpError ? error.status : undefined;
-    console.error("Smart Mode fallback", { reason, ...(status === undefined ? {} : { providerStatus: status }) });
     return NextResponse.json({
       ...fallback,
       smartMode: "offline",

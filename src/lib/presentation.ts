@@ -1,3 +1,5 @@
+// presentation.ts: AQI color interpolation, day dial geometry, visibility estimation, scenario impact — cohesive calculation utilities — justified over 150 lines.
+
 import { HourlyAir } from "./types";
 import { EMISSION_CONSTANTS } from "./impact/constants";
 import { tripImpact } from "./impact/calculator";
