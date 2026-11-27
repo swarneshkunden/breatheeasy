@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { aiRequestSchema } from "@/lib/security/validation";
+import { log } from "@/lib/security/logger";
 import { createRulePlan } from "@/lib/rules/engine";
 import { GeminiAiClient, GeminiHttpError, GeminiTimeoutError } from "@/lib/ai/client";
 import { outputSchema, validateAiOutput } from "@/lib/ai/output-validation";
@@ -29,6 +30,7 @@ export interface AiPlanResult {
 export async function generateAiPlan(input: AiPlanInput): Promise<AiPlanResult> {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey || /^your_.+_here$/i.test(apiKey)) {
+    log("warn", "AI Smart Mode unavailable: missing API key", { reason: "missing_api_key" });
     const fallback = buildFallbackAir(input);
     return { ...fallback, smartMode: "offline", smartModeReason: "missing_api_key" };
   }
@@ -42,15 +44,15 @@ export async function generateAiPlan(input: AiPlanInput): Promise<AiPlanResult> 
   try {
     const text = await aiClient.generate(prompt);
     const result = validateAiOutput(text);
+    log("info", "AI Smart Mode generated plan", { smartMode: "live", latitude: input.latitude, longitude: input.longitude });
     return { ...result, smartMode: "live" };
   } catch (error) {
-    if (error instanceof Error && error.message === "AI client not configured") {
-      return { ...fallback, smartMode: "offline", smartModeReason: "missing_api_key" };
-    }
+    const reason = classifyAiError(error);
+    log("warn", "AI Smart Mode fallback", { reason, latitude: input.latitude, longitude: input.longitude });
     return {
       ...fallback,
       smartMode: "offline",
-      smartModeReason: classifyAiError(error),
+      smartModeReason: reason,
       ...(error instanceof GeminiHttpError ? { smartModeStatus: error.status } : {}),
     };
   }
