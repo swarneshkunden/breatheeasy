@@ -3,6 +3,7 @@
 import { categorizeAqi } from "@/lib/rules/engine";
 import type { AirSnapshot, CityResult } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
+import { Target } from "lucide-react";
 import { CitySearch } from "@/components/CitySearch";
 
 interface AirDisplayProps {
@@ -45,7 +46,9 @@ export function AirDisplay({
           <p className="location-caption">A softer way to read the air around you</p>
         </div>
         <div className="location-tools">
-          <button className="secondary location-button" onClick={onLocate} aria-label="Use my current location" />
+          <button className="secondary location-button" onClick={onLocate} aria-label="Use my current location">
+            <Target size={16} aria-hidden="true" />
+          </button>
           <button
             className={`secondary location-button ${following ? "location-active" : ""}`}
             aria-pressed={following}
