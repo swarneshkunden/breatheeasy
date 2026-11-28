@@ -1,3 +1,3 @@
 export interface AiClient {
-  generate(prompt: string): Promise<string>;
+  generate(prompt: string, systemInstruction: string): Promise<string>;
 }

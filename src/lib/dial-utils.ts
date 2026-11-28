@@ -8,7 +8,11 @@ export function dialSegmentGeometry(radius = 88, gapDegrees = 1) {
   });
 }
 
-export function annularSegmentPath(index: number, centerX = 115, centerY = 115) {
+export function annularSegmentPath(
+  index: number,
+  centerX = 115,
+  centerY = 115,
+) {
   const segment = dialSegmentGeometry(88, 1)[index];
   if (!segment) return "";
   const round = (value: number) => Math.round(value * 1000) / 1000;

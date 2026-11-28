@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { shouldRefetch, formatLocationLabel, type LocationReading } from "@/lib/location";
-import { GEO_ERRORS, POSITION_OPTIONS, roundCoordinate } from "./geolocation-utils";
+import {
+  shouldRefetch,
+  formatLocationLabel,
+  type LocationReading,
+} from "@/lib/location";
+import { POSITION_OPTIONS, roundCoordinate } from "./geolocation-utils";
+import { copy } from "@/lib/i18n";
+import type { Language } from "@/lib/types";
 
 interface LocationCoords {
   latitude: number;
@@ -14,24 +20,32 @@ interface LocationState {
   label: string | null;
   error: string | null;
   following: boolean;
+  locating: boolean;
   timestamp: number | null;
 }
 
 interface UseLocationOptions {
-  onChange?: (coords: LocationCoords) => void;
+  onChange?: (
+    coords: LocationCoords,
+  ) => boolean | void | Promise<boolean | void>;
+  language?: Language;
 }
 
-export function useLocation({ onChange }: UseLocationOptions = {}) {
+export function useLocation({
+  onChange,
+  language = "en",
+}: UseLocationOptions = {}) {
+  const t = copy[language];
   const [state, setState] = useState<LocationState>({
     coords: null,
     label: null,
     error: null,
     following: false,
+    locating: false,
     timestamp: null,
   });
   const watchIdRef = useRef<number | null>(null);
   const lastReadingRef = useRef<LocationReading | null>(null);
-  const lastFetchRef = useRef(0);
   const wasFollowingRef = useRef(false);
   const followingRef = useRef(false);
   const onChangeRef = useRef(onChange);
@@ -39,63 +53,102 @@ export function useLocation({ onChange }: UseLocationOptions = {}) {
 
   const handleError = useCallback(
     (err: GeolocationPositionError) => {
-      const message = GEO_ERRORS[err.code] ?? "Unable to determine your location.";
-      setState((prev) => ({ ...prev, error: message }));
+      const message =
+        err.code === 1
+          ? t.locationPermissionDenied
+          : err.code === 3
+            ? t.locationRequestTimeout
+            : t.locationPositionUnavailable;
+      setState((prev) => ({ ...prev, error: message, locating: false }));
     },
-    [],
+    [t],
   );
 
   const setCoords = useCallback(
     (position: GeolocationPosition, following: boolean) => {
-      const coords: LocationCoords = { latitude: roundCoordinate(position.coords.latitude), longitude: roundCoordinate(position.coords.longitude) };
+      const coords: LocationCoords = {
+        latitude: roundCoordinate(position.coords.latitude),
+        longitude: roundCoordinate(position.coords.longitude),
+      };
       const now = Date.now();
-      lastReadingRef.current = { ...coords, timestamp: now };
-      lastFetchRef.current = now;
       setState({
         coords,
         label: formatLocationLabel(coords.latitude, coords.longitude),
         error: null,
         following,
+        locating: false,
         timestamp: now,
       });
     },
     [],
   );
 
+  const recordFetched = useCallback((coords: LocationCoords) => {
+    const timestamp = Date.now();
+    lastReadingRef.current = { ...coords, timestamp };
+    setState((prev) => ({ ...prev, timestamp }));
+  }, []);
+
+  const fetchForCoordinates = useCallback(
+    (coords: LocationCoords) => {
+      const onChange = onChangeRef.current;
+      if (!onChange) return;
+      const result = onChange(coords);
+      if (result instanceof Promise) {
+        void result
+          .then((fetched) => {
+            if (fetched !== false) recordFetched(coords);
+          })
+          .catch(() => {
+            setState((prev) => ({
+              ...prev,
+              error: t.airTemporarilyUnavailable,
+            }));
+          });
+      } else if (result !== false) {
+        recordFetched(coords);
+      }
+    },
+    [recordFetched, t],
+  );
+
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setState((prev) => ({ ...prev, error: "Geolocation is not supported by this browser." }));
+      setState((prev) => ({ ...prev, error: t.locationUnsupported }));
       return;
     }
     if (!isSecureContext) {
       setState((prev) => ({
         ...prev,
-        error: "Location access requires a secure connection (HTTPS or localhost).",
+        error: t.locationSecureContext,
       }));
       return;
     }
-    setState((prev) => ({ ...prev, error: null }));
+    setState((prev) => ({ ...prev, error: null, locating: true }));
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setCoords(position, followingRef.current);
-        onChangeRef.current?.({ latitude: roundCoordinate(position.coords.latitude), longitude: roundCoordinate(position.coords.longitude) });
+        fetchForCoordinates({
+          latitude: roundCoordinate(position.coords.latitude),
+          longitude: roundCoordinate(position.coords.longitude),
+        });
       },
       handleError,
       POSITION_OPTIONS,
     );
-  }, [setCoords, handleError]);
+  }, [setCoords, handleError, fetchForCoordinates, t]);
 
   const setFollowing = useCallback(
     (active: boolean) => {
       if (active) {
         if (!navigator.geolocation) {
-          setState((prev) => ({ ...prev, error: "Geolocation is not supported by this browser." }));
+          setState((prev) => ({ ...prev, error: t.locationUnsupported }));
           return;
         }
         if (!isSecureContext) {
           setState((prev) => ({
             ...prev,
-            error: "Location access requires a secure connection (HTTPS or localhost).",
+            error: t.locationSecureContext,
           }));
           return;
         }
@@ -113,8 +166,7 @@ export function useLocation({ onChange }: UseLocationOptions = {}) {
             const next: LocationReading = { ...coords, timestamp: now };
             const refresh = shouldRefetch(lastReadingRef.current, next, now);
             setCoords(position, true);
-            if (refresh && lastReadingRef.current) onChangeRef.current?.(coords);
-            lastReadingRef.current = next;
+            if (refresh) fetchForCoordinates(coords);
           },
           handleError,
           POSITION_OPTIONS,
@@ -130,7 +182,7 @@ export function useLocation({ onChange }: UseLocationOptions = {}) {
         setState((prev) => ({ ...prev, following: false }));
       }
     },
-    [setCoords, handleError],
+    [setCoords, handleError, fetchForCoordinates, t],
   );
 
   // Register visibility listener once; never clear the watcher in cleanup except on unmount.

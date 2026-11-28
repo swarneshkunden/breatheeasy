@@ -17,10 +17,14 @@ describe("fetchWithTimeout", () => {
 
   it("returns data on successful fetch within timeout", async () => {
     fetchSpy.mockResolvedValueOnce(new Response("hello", { status: 200 }));
-    const result = await fetchWithTimeout("http://example.com", 5000, async (signal) => {
-      const response = await fetch("http://example.com", { signal });
-      return response.text();
-    });
+    const result = await fetchWithTimeout(
+      "http://example.com",
+      5000,
+      async (signal) => {
+        const response = await fetch("http://example.com", { signal });
+        return response.text();
+      },
+    );
     expect(result).toBe("hello");
   });
 
@@ -48,7 +52,10 @@ describe("fetchWithTimeout", () => {
     fetchSpy.mockImplementation((_url, init) => {
       return new Promise((resolve, reject) => {
         const signal = init?.signal;
-        const timer = setTimeout(() => resolve(new Response("delayed", { status: 200 })), 500);
+        const timer = setTimeout(
+          () => resolve(new Response("delayed", { status: 200 })),
+          500,
+        );
         signal?.addEventListener("abort", () => {
           clearTimeout(timer);
           reject(new DOMException("Aborted", "AbortError"));
@@ -83,7 +90,8 @@ describe("fetchWithTimeout", () => {
     await expect(
       fetchWithTimeout("http://example.com", 100, async (signal) => {
         const response = await fetch("http://example.com", { signal });
-        const reader = response.body!.getReader();
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("Expected a response stream");
         const result = await reader.read();
         reader.releaseLock();
         return result.value?.toString() ?? "";

@@ -3,32 +3,53 @@ import { HowItWorksSection } from "@/components/HowItWorksSection";
 import { WhatYouGetSection } from "@/components/WhatYouGetSection";
 import { PrivacyStrip } from "@/components/PrivacyStrip";
 import { LandingFooter } from "@/components/LandingFooter";
+import Link from "next/link";
+import { BrandMark } from "@/components/BrandMark";
+import { PreferenceControls } from "@/components/PreferenceControls";
+import { cookies } from "next/headers";
+import { copy } from "@/lib/i18n";
 
 export const metadata = {
-  title: "BreatheEasy — Urban Air Quality Assistant",
-  description: "Smog-smart routines, indoor air hacks, and community action for cleaner family days.",
+  title: "Family Clean Air Guidance",
+  description:
+    "Understand local air quality and build practical, safer routines for your family.",
 };
 
 export const dynamic = "force-dynamic";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const cookieStore = await cookies();
+  const language =
+    cookieStore.get("breatheeasy-language")?.value === "hi" ? "hi" : "en";
+  const themeValue = cookieStore.get("breatheeasy-theme")?.value;
+  const theme =
+    themeValue === "light" || themeValue === "dark" ? themeValue : "system";
+  const t = copy[language];
+
   return (
     <div className="landing-shell">
-      <a href="#hero-heading" className="skip-link">Skip to main content</a>
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <header className="landing-header">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">*</span>
+        <Link href="/" className="landing-brand">
+          <span className="landing-brand-mark">
+            <BrandMark />
+          </span>
           <span>BreatheEasy</span>
-        </div>
-        <a href="/app" className="button button-primary">
-          Check my air
+        </Link>
+        <a href="/app" className="landing-button landing-button-primary">
+          {t.checkMyAir}
         </a>
+        <PreferenceControls initialLanguage={language} initialTheme={theme} />
       </header>
-      <HeroSection />
-      <HowItWorksSection />
-      <WhatYouGetSection />
-      <PrivacyStrip />
-      <LandingFooter />
+      <main className="landing-main" id="main-content">
+        <HeroSection t={t} />
+        <HowItWorksSection t={t} />
+        <WhatYouGetSection t={t} />
+        <PrivacyStrip t={t} />
+      </main>
+      <LandingFooter t={t} />
     </div>
   );
 }

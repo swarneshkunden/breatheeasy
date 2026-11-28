@@ -3,16 +3,23 @@ import { NextRequest } from "next/server";
 import { GET } from "./route";
 
 vi.mock("@/lib/security/distributed-rate-limit", () => ({
-  checkRateLimit: vi.fn(async () => ({ allowed: true, retry: 0, distributed: false })),
+  checkRateLimit: vi.fn(async () => ({
+    allowed: true,
+    retry: 0,
+    distributed: false,
+  })),
   READ_LIMITS: { limit: 30, windowMs: 60_000, prefix: "breatheeasy:read" },
   AI_LIMITS: { limit: 10, windowMs: 60_000, prefix: "breatheeasy:ai" },
 }));
 
 function request(q: string, ip: string) {
-  return new NextRequest(`http://localhost/api/geocode?q=${encodeURIComponent(q)}`, {
-    method: "GET",
-    headers: { "x-forwarded-for": ip },
-  });
+  return new NextRequest(
+    `http://localhost/api/geocode?q=${encodeURIComponent(q)}`,
+    {
+      method: "GET",
+      headers: { "x-real-ip": ip },
+    },
+  );
 }
 
 afterEach(() => {
@@ -31,7 +38,7 @@ describe("geocode route", () => {
   it("rejects missing query with a sanitized 400", async () => {
     const req = new NextRequest("http://localhost/api/geocode", {
       method: "GET",
-      headers: { "x-forwarded-for": "192.0.2.5" },
+      headers: { "x-real-ip": "192.0.2.5" },
     });
     const response = await GET(req);
     expect(response.status).toBe(400);
@@ -59,21 +66,14 @@ describe("geocode route", () => {
         ],
       }),
     );
-    const originalFetch = global.fetch;
-    (global as any).fetch = mockFetch;
+    vi.stubGlobal("fetch", mockFetch);
 
-    try {
-      const response = await GET(request("delhi", "192.0.2.1"));
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      // Contract: backend returns { results: [...] }, never a bare array.
-      expect(body).toHaveProperty("results");
-      expect(Array.isArray(body)).toBe(false);
-      expect(body.results).toHaveLength(1);
-      expect(body.results[0].name).toBe("New Delhi");
-    } finally {
-      (global as any).fetch = originalFetch;
-      mockFetch.mockRestore();
-    }
+    const response = await GET(request("delhi", "192.0.2.1"));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toHaveProperty("results");
+    expect(Array.isArray(body)).toBe(false);
+    expect(body.results).toHaveLength(1);
+    expect(body.results[0].name).toBe("New Delhi");
   });
 });

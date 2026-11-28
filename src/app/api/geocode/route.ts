@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { clientIp, roundCoordinate } from "@/lib/security/validation";
-import { checkRateLimit, READ_LIMITS } from "@/lib/security/distributed-rate-limit";
+import {
+  checkRateLimit,
+  READ_LIMITS,
+} from "@/lib/security/distributed-rate-limit";
 import { fetchWithTimeout } from "@/lib/security/fetchWithTimeout";
 import { BoundedCache } from "@/lib/security/bounded-cache";
 import { validateCityResults } from "@/lib/ai/city-validation";
 
 const schema = z.object({
   q: z.string().trim().min(2).max(80),
+  lang: z.enum(["en", "hi"]),
 });
 
 const GEOCODE_HOST = "https://geocoding-api.open-meteo.com/v1/search";
@@ -40,17 +44,23 @@ export async function GET(request: NextRequest) {
   const ip = clientIp(request);
   const limit = await checkRateLimit(ip, READ_LIMITS);
   if (!limit.allowed) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(limit.retry) } });
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(limit.retry) } },
+    );
   }
 
   const rawQ = request.nextUrl.searchParams.get("q") ?? "";
   const q = stripControlChars(rawQ.trim());
-  const parsed = schema.safeParse({ q });
+  const parsed = schema.safeParse({
+    q,
+    lang: request.nextUrl.searchParams.get("lang") ?? appLanguage(request),
+  });
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid city" }, { status: 400 });
   }
 
-  const lang = appLanguage(request);
+  const lang = parsed.data.lang;
   const key = `${lang}:${q}`;
   const cached = cache.get(key);
   if (cached) {
@@ -58,7 +68,12 @@ export async function GET(request: NextRequest) {
   }
 
   const url = new URL(GEOCODE_HOST);
-  url.search = new URLSearchParams({ name: q, count: "5", language: lang, format: "json" }).toString();
+  url.search = new URLSearchParams({
+    name: q,
+    count: "5",
+    language: lang,
+    format: "json",
+  }).toString();
 
   try {
     const validated = await fetchWithTimeout(url, 5000, async (signal) => {
@@ -80,6 +95,9 @@ export async function GET(request: NextRequest) {
     cache.set(key, body);
     return NextResponse.json(body);
   } catch {
-    return NextResponse.json({ error: "City search unavailable" }, { status: 502 });
+    return NextResponse.json(
+      { error: "City search unavailable" },
+      { status: 502 },
+    );
   }
 }

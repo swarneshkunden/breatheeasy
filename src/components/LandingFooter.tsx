@@ -1,8 +1,8 @@
-export function LandingFooter() {
+export function LandingFooter({ t }: { t: Record<string, string> }) {
   return (
     <footer className="landing-footer">
-      <p>BreatheEasy • Urban Air Quality Assistant</p>
-      <p className="foot-note">General guidance only. This is not medical advice. If symptoms are severe or worsen, seek qualified medical care.</p>
+      <p>{t.footerBrand}</p>
+      <p className="foot-note">{t.medicalDisclaimer}</p>
     </footer>
   );
 }

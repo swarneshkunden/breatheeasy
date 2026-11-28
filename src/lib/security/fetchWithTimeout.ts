@@ -8,7 +8,11 @@ export async function fetchWithTimeout<T>(
   try {
     return await fn(controller.signal);
   } catch (error) {
-    const isAbort = typeof error === "object" && error !== null && "name" in error && error.name === "AbortError";
+    const isAbort =
+      typeof error === "object" &&
+      error !== null &&
+      "name" in error &&
+      error.name === "AbortError";
     if (controller.signal.aborted || isAbort) {
       throw new Error("Request timed out");
     }

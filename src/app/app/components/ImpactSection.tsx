@@ -1,12 +1,38 @@
 "use client";
 
-export function ImpactSection({ cigarettes }: { cigarettes: number }) {
+import { copy, translate } from "@/lib/i18n";
+import type { Language } from "@/lib/types";
+
+export function ImpactSection({
+  cigarettes,
+  language,
+}: {
+  cigarettes: number | null;
+  language: Language;
+}) {
+  const t = copy[language];
   return (
     <section className="section">
-      <div className="section-heading"><div><p className="eyebrow">Impact, made legible</p><h2>{cigarettes} cigarette equivalents</h2></div></div>
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">{t.impactMadeLegible}</p>
+          <h2>
+            {cigarettes === null
+              ? t.airUnavailable
+              : translate(language, "cigaretteEquivalents", {
+                  count: cigarettes,
+                })}
+          </h2>
+        </div>
+      </div>
       <article className="impact-card">
-        <p><strong>A useful comparison, not a medical measure.</strong> Today’s PM2.5 is compared with the widely cited approximation that 22 µg/m³ over 24 hours is roughly equivalent to one cigarette.</p>
-        <details className="calculation-drawer"><summary>How we calculated this</summary><p>Visibility is an illustrative estimate derived from PM2.5 concentration and is not measured visibility. Exposure uses the approximate 22 µg/m³ per 24-hour cigarette-equivalent rule. Trip emissions use 170 g CO2/km for a petrol car versus 28 g CO2/km for metro travel. Purifier estimates depend on clean-air delivery rate, room size, and use.</p></details>
+        <p>
+          <strong>{t.comparisonNotMedical}</strong> {t.cigaretteComparison}
+        </p>
+        <details className="calculation-drawer">
+          <summary>{t.howCalculated}</summary>
+          <p>{t.impactCalculation}</p>
+        </details>
       </article>
     </section>
   );

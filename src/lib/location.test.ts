@@ -21,8 +21,16 @@ describe("distanceKm (haversine)", () => {
 
 describe("shouldRefetch", () => {
   const now = Date.now();
-  const prev: Parameters<typeof shouldRefetch>[0] = { latitude: 28.61, longitude: 77.21, timestamp: now - 1000 };
-  const next: Parameters<typeof shouldRefetch>[1] = { latitude: 28.61, longitude: 77.21, timestamp: now };
+  const prev: Parameters<typeof shouldRefetch>[0] = {
+    latitude: 28.61,
+    longitude: 77.21,
+    timestamp: now - 1000,
+  };
+  const next: Parameters<typeof shouldRefetch>[1] = {
+    latitude: 28.61,
+    longitude: 77.21,
+    timestamp: now,
+  };
 
   it("refetches when there is no previous reading", () => {
     expect(shouldRefetch(null, next, now)).toBe(true);
@@ -39,18 +47,28 @@ describe("shouldRefetch", () => {
   });
 
   it("does not refetch when within 1 km and 15 minutes", () => {
-    const close = { latitude: 28.6101, longitude: 77.2101, timestamp: now - 1000 };
+    const close = {
+      latitude: 28.6101,
+      longitude: 77.2101,
+      timestamp: now - 1000,
+    };
     expect(shouldRefetch(prev, close, now)).toBe(false);
   });
 });
 
 describe("formatLocationLabel", () => {
   it("formats Delhi coordinates with cardinal directions", () => {
-    expect(formatLocationLabel(28.61, 77.21)).toBe("Your location (28.61°N, 77.21°E)");
+    expect(formatLocationLabel(28.61, 77.21)).toBe(
+      "Your location (28.61°N, 77.21°E)",
+    );
   });
 
   it("formats southern and western hemispheres", () => {
-    expect(formatLocationLabel(-33.87, 151.21)).toBe("Your location (33.87°S, 151.21°E)");
-    expect(formatLocationLabel(40.71, -74.01)).toBe("Your location (40.71°N, 74.01°W)");
+    expect(formatLocationLabel(-33.87, 151.21)).toBe(
+      "Your location (33.87°S, 151.21°E)",
+    );
+    expect(formatLocationLabel(40.71, -74.01)).toBe(
+      "Your location (40.71°N, 74.01°W)",
+    );
   });
 });

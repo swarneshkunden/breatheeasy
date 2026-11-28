@@ -1,7 +1,3 @@
-import { HourlyAir } from "./types";
-import { EMISSION_CONSTANTS } from "./impact/constants";
-import { tripImpact } from "./impact/calculator";
-
 export type SkylineMix = {
   sky: string;
   far: string;
@@ -10,22 +6,33 @@ export type SkylineMix = {
   sunOpacity: number;
 };
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
 
 function hexToRgb(hex: string) {
   const value = hex.replace("#", "");
-  return [0, 2, 4].map((offset) => Number.parseInt(value.slice(offset, offset + 2), 16));
+  return [0, 2, 4].map((offset) =>
+    Number.parseInt(value.slice(offset, offset + 2), 16),
+  );
 }
 
 function rgbToHex(rgb: number[]) {
-  return `#${rgb.map((channel) => Math.round(clamp(channel, 0, 255)).toString(16).padStart(2, "0")).join("")}`;
+  return `#${rgb
+    .map((channel) =>
+      Math.round(clamp(channel, 0, 255))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 }
 
 export function mixHex(from: string, to: string, amount: number) {
   const ratio = clamp(amount, 0, 1);
   const a = hexToRgb(from);
   const b = hexToRgb(to);
-  return rgbToHex(a.map((channel, index) => channel + (b[index] - channel) * ratio));
+  return rgbToHex(
+    a.map((channel, index) => channel + (b[index] - channel) * ratio),
+  );
 }
 
 export function skyColor(aqi: number) {
@@ -41,7 +48,11 @@ export function skyColor(aqi: number) {
     const [startAqi, startColor] = stops[index];
     const [endAqi, endColor] = stops[index + 1];
     if (value >= startAqi && value <= endAqi) {
-      return mixHex(startColor, endColor, (value - startAqi) / (endAqi - startAqi));
+      return mixHex(
+        startColor,
+        endColor,
+        (value - startAqi) / (endAqi - startAqi),
+      );
     }
   }
   return stops.at(-1)?.[1] ?? "#76655A";

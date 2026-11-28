@@ -5,12 +5,14 @@ import { CityResult } from "@/lib/types";
 import { roundCoordinate } from "@/lib/security/validation";
 import { validateCityResults } from "@/lib/ai/city-validation";
 import { fetchWithTimeout } from "@/lib/security/fetchWithTimeout";
+import type { Language } from "@/lib/types";
 
 interface UseCitySearchProps {
   onSelect: (city: CityResult) => void;
+  language: Language;
 }
 
-export function useCitySearch({ onSelect }: UseCitySearchProps) {
+export function useCitySearch({ onSelect, language }: UseCitySearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CityResult[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -41,13 +43,28 @@ export function useCitySearch({ onSelect }: UseCitySearchProps) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       requestIdRef.current += 1;
       abortRef.current?.abort();
-      const rounded = { ...city, latitude: roundCoordinate(city.latitude), longitude: roundCoordinate(city.longitude) };
-      setQuery(`${rounded.name}${rounded.admin1 ? ", " + rounded.admin1 : ""}${rounded.country ? ", " + rounded.country : ""}`);
+      const rounded = {
+        ...city,
+        latitude: roundCoordinate(city.latitude),
+        longitude: roundCoordinate(city.longitude),
+      };
+      setQuery(
+        `${rounded.name}${rounded.admin1 ? ", " + rounded.admin1 : ""}${rounded.country ? ", " + rounded.country : ""}`,
+      );
       setResults([]);
       setLoading(false);
       setHighlighted(-1);
       try {
-        localStorage.setItem("breatheeasy-last-city", JSON.stringify({ name: rounded.name, admin1: rounded.admin1, country: rounded.country, latitude: rounded.latitude, longitude: rounded.longitude }));
+        localStorage.setItem(
+          "breatheeasy-last-city",
+          JSON.stringify({
+            name: rounded.name,
+            admin1: rounded.admin1,
+            country: rounded.country,
+            latitude: rounded.latitude,
+            longitude: rounded.longitude,
+          }),
+        );
       } catch {
         // localStorage unavailable; ignore.
       }
@@ -56,42 +73,60 @@ export function useCitySearch({ onSelect }: UseCitySearchProps) {
     [onSelect],
   );
 
-  const fetchResults = useCallback(async (q: string) => {
-    const trimmed = q.trim();
-    if (trimmed.length < 2) {
-      setResults([]);
+  const fetchResults = useCallback(
+    async (q: string) => {
+      const trimmed = q.trim();
+      if (trimmed.length < 2) {
+        setResults([]);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+      const id = ++requestIdRef.current;
+      const controller = new AbortController();
+      const previousController = abortRef.current;
+      abortRef.current = controller;
+      if (previousController) previousController.abort();
+      setLoading(true);
       setError(null);
-      setLoading(false);
-      return;
-    }
-    const id = ++requestIdRef.current;
-    const controller = new AbortController();
-    const previousController = abortRef.current;
-    abortRef.current = controller;
-    if (previousController) previousController.abort();
-    setLoading(true);
-    setError(null);
-    try {
-      const validated = await fetchWithTimeout(
-        `/api/geocode?q=${encodeURIComponent(trimmed)}`,
-        5000,
-        async (signal) => {
-          const response = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`, { signal });
-          if (!response.ok) throw new Error("Search failed");
-          return await response.json();
-        },
-      );
-      if (id !== requestIdRef.current || controller.signal.aborted) return;
-      const cityValidated = validateCityResults(validated);
-      setResults(cityValidated);
-    } catch {
-      if (id !== requestIdRef.current || controller.signal.aborted) return;
-      setResults([]);
-      setError("Search is temporarily unavailable");
-    } finally {
-      if (id === requestIdRef.current) setLoading(false);
-    }
-  }, []);
+      try {
+        const validated = await fetchWithTimeout(
+          `/api/geocode?q=${encodeURIComponent(trimmed)}&lang=${language}`,
+          5000,
+          async (signal) => {
+            const response = await fetch(
+              `/api/geocode?q=${encodeURIComponent(trimmed)}&lang=${language}`,
+              { signal },
+            );
+            if (!response.ok) throw new Error("Search failed");
+            const payload: unknown = await response.json();
+            return payload;
+          },
+        );
+        if (id !== requestIdRef.current || controller.signal.aborted) return;
+        const cityValidated = validateCityResults(validated);
+        setResults(cityValidated);
+        if (cityValidated.length === 0) setError("No matching city found");
+      } catch {
+        if (id !== requestIdRef.current || controller.signal.aborted) return;
+        setResults([]);
+        setError("Search is temporarily unavailable");
+      } finally {
+        if (id === requestIdRef.current) setLoading(false);
+      }
+    },
+    [language],
+  );
+
+  const scheduleSearch = useCallback(
+    (q: string) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        void fetchResults(q);
+      }, 300);
+    },
+    [fetchResults],
+  );
 
   return {
     query,
@@ -107,5 +142,6 @@ export function useCitySearch({ onSelect }: UseCitySearchProps) {
     close,
     select,
     fetchResults,
+    scheduleSearch,
   };
 }

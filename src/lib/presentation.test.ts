@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { annularSegmentPath, bestWindow, dialSegmentGeometry, mixHex, skyColor, skyLayerMix, visibilityKm, whatIfTotals } from "./presentation";
+import {
+  annularSegmentPath,
+  bestWindow,
+  dialSegmentGeometry,
+  mixHex,
+  skyColor,
+  skyLayerMix,
+  visibilityKm,
+  whatIfTotals,
+} from "./presentation";
 
 describe("presentation calculations", () => {
   it("clamps sky color endpoints", () => {
@@ -33,16 +42,20 @@ describe("presentation calculations", () => {
 
   it("finds the lowest-AQI contiguous hour window", () => {
     const hourly = [
-      { time: "12:00", aqi: 120, pm25: 50 },
-      { time: "13:00", aqi: 80, pm25: 30 },
-      { time: "14:00", aqi: 60, pm25: 20 },
+      { time: "12:00", aqi: 120, pm25: 50, pm10: 50, no2: 10, o3: 10 },
+      { time: "13:00", aqi: 80, pm25: 30, pm10: 30, no2: 10, o3: 10 },
+      { time: "14:00", aqi: 60, pm25: 20, pm10: 20, no2: 10, o3: 10 },
     ];
     expect(bestWindow(hourly)?.hour.time).toBe("13:00");
     expect(bestWindow([])).toBeNull();
   });
 
   it("returns baseline totals with all toggles off", () => {
-    expect(whatIfTotals([])).toEqual({ exposure: 100, exposureReduction: 0, co2AvoidedG: 0 });
+    expect(whatIfTotals([])).toEqual({
+      exposure: 100,
+      exposureReduction: 0,
+      co2AvoidedG: 0,
+    });
   });
 
   it("adds purifier and metro effects with all toggles on", () => {
@@ -54,6 +67,10 @@ describe("presentation calculations", () => {
   });
 
   it("does not add effects for unknown toggle ids", () => {
-    expect(whatIfTotals(["unknown"])).toEqual({ exposure: 100, exposureReduction: 0, co2AvoidedG: 0 });
+    expect(whatIfTotals(["unknown"])).toEqual({
+      exposure: 100,
+      exposureReduction: 0,
+      co2AvoidedG: 0,
+    });
   });
 });

@@ -1,28 +1,30 @@
-export function HowItWorksSection() {
+export function HowItWorksSection({ t }: { t: Record<string, string> }) {
   return (
-    <section className="how-it-works" aria-labelledby="how-heading">
-      <h2 id="how-heading" className="section-title">How it works</h2>
-      <p className="section-intro">Three steps to a safer, lower-emission day.</p>
-      <ol className="steps">
+    <section className="landing-how-it-works" aria-labelledby="how-heading">
+      <h2 id="how-heading" className="landing-section-title">
+        {t.howItWorks}
+      </h2>
+      <p className="landing-section-intro">{t.threeSteps}</p>
+      <ol className="landing-steps">
         <li>
-          <span className="step-number">1</span>
+          <span className="landing-step-number">1</span>
           <div>
-            <h3>Tell us about your home</h3>
-            <p>Household members, home type, commute, and cooking fuel — stored only on your device.</p>
+            <h3>{t.tellUsHome}</h3>
+            <p>{t.homeProfileDescription}</p>
           </div>
         </li>
         <li>
-          <span className="step-number">2</span>
+          <span className="landing-step-number">2</span>
           <div>
-            <h3>See your air</h3>
-            <p>Live AQI, pollutant readings, and a 24-hour forecast in your location&apos;s local time.</p>
+            <h3>{t.seeYourAir}</h3>
+            <p>{t.liveForecastDescription}</p>
           </div>
         </li>
         <li>
-          <span className="step-number">3</span>
+          <span className="landing-step-number">3</span>
           <div>
-            <h3>Get a plan with real numbers</h3>
-            <p>Low-emission routines, indoor air hacks, and sustainable alternatives, each with a direct impact estimate.</p>
+            <h3>{t.getPlanNumbers}</h3>
+            <p>{t.planNumbersDescription}</p>
           </div>
         </li>
       </ol>

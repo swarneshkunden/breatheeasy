@@ -11,6 +11,8 @@ const baseInput: AiPlanInput = {
   longitude: 77.23,
   currentAqi: 150,
   pm25: 85,
+  hourly: [],
+  utcOffsetSeconds: 0,
   profile: {
     members: ["kids", "adults"],
     homeType: "apartment",
@@ -26,9 +28,33 @@ const baseInput: AiPlanInput = {
 describe("AI output validation", () => {
   it("accepts valid AI output", () => {
     const valid = JSON.stringify({
-      lowEmission: [{ title: "Walk", detail: "Walk more", impact: "Less emissions", score: 90 }],
-      indoor: [{ title: "Purifier", detail: "Use purifier", impact: "Cleaner air", score: 85 }],
-      sustainable: [{ title: "Metro", detail: "Take metro", impact: "Less car use", score: 95 }],
+      answer: "Use filtered indoor air.",
+      tips: ["When can I open windows?"],
+      followUps: ["How should I commute?"],
+      lowEmission: [
+        {
+          title: "Walk",
+          detail: "Walk more",
+          impact: "Less emissions",
+          score: 90,
+        },
+      ],
+      indoor: [
+        {
+          title: "Purifier",
+          detail: "Use purifier",
+          impact: "Cleaner air",
+          score: 85,
+        },
+      ],
+      sustainable: [
+        {
+          title: "Metro",
+          detail: "Take metro",
+          impact: "Less car use",
+          score: 95,
+        },
+      ],
     });
     const result = validateAiOutput(valid);
     expect(result.lowEmission.length).toBe(1);
@@ -41,7 +67,11 @@ describe("AI output validation", () => {
   });
 
   it("rejects missing sections", () => {
-    const incomplete = JSON.stringify({ lowEmission: [], indoor: [], sustainable: [] });
+    const incomplete = JSON.stringify({
+      lowEmission: [],
+      indoor: [],
+      sustainable: [],
+    });
     expect(() => validateAiOutput(incomplete)).toThrow("Invalid AI response");
   });
 
@@ -102,7 +132,15 @@ describe("generateAiPlan fallback behavior", () => {
   it("includes fallback advice tips", async () => {
     process.env.GEMINI_API_KEY = undefined;
     const result = await generateAiPlan(baseInput);
-    expect(result.lowEmission.some((t) => t.title.includes("metro") || t.title.includes("trip"))).toBe(true);
-    expect(result.indoor.some((t) => t.title.includes("Purifier") || t.title.includes("Ventilate"))).toBe(true);
+    expect(
+      result.lowEmission.some(
+        (t) => t.title.includes("metro") || t.title.includes("trip"),
+      ),
+    ).toBe(true);
+    expect(
+      result.indoor.some(
+        (t) => t.title.includes("Purifier") || t.title.includes("Ventilate"),
+      ),
+    ).toBe(true);
   });
 });

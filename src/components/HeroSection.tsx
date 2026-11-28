@@ -1,27 +1,31 @@
 import { LivingSkyline } from "@/components/LivingSkyline";
 
-export function HeroSection() {
+export function HeroSection({ t }: { t: Record<string, string> }) {
   return (
-    <section className="hero" aria-labelledby="hero-heading">
-      <div className="hero-grid">
-        <div className="hero-content">
-          <div className="hero-badge">
-            <span className="demo-dot" aria-hidden="true"></span>
-            Demo data • Delhi-style severe smog (AQI 380)
+    <section className="landing-hero" aria-labelledby="hero-heading">
+      <div className="landing-hero-grid">
+        <div className="landing-hero-content">
+          <div className="landing-hero-badge">
+            <span className="landing-demo-dot" aria-hidden="true"></span>
+            {t.landingBadge}
           </div>
-          <h1 id="hero-heading" className="hero-title">Breathe easier, one family at a time</h1>
-          <p className="hero-description">
-            Location-aware air readings, low-emission routines, indoor air hacks, and a daily plan backed by real numbers.
-          </p>
-          <div className="hero-actions">
-            <a href="/app" className="button button-primary">Check my air</a>
-            <a href="/app" className="button button-outline">See the demo</a>
+          <h1 id="hero-heading" className="landing-hero-title">
+            {t.landingTitle}
+          </h1>
+          <p className="landing-hero-description">{t.landingDescription}</p>
+          <div className="landing-hero-actions">
+            <a href="/app" className="landing-button landing-button-primary">
+              {t.checkMyAir}
+            </a>
+            <a href="/app" className="landing-button landing-button-outline">
+              {t.seeDemo}
+            </a>
           </div>
         </div>
-        <div className="hero-visual">
-          <div className="hero-aqi">
-            <span className="aqi-value">380</span>
-            <span className="aqi-label">Hazardous • demo</span>
+        <div className="landing-hero-visual">
+          <div className="landing-hero-aqi">
+            <span className="landing-aqi-value">380</span>
+            <span className="landing-aqi-label">{t.hazardousDemo}</span>
           </div>
           <LivingSkyline aqi={380} city="New Delhi" />
         </div>

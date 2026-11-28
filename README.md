@@ -4,15 +4,15 @@ BreatheEasy is a production-ready urban air quality assistant that helps familie
 
 ## Problem Statement Coverage
 
-| Requirement | Feature | Implementation |
-|---|---|---|
-| GenAI-powered assistant | Gemini chat and Plan my day | Server-only Gemini integration with JSON validation and deterministic fallback |
-| Families and communities | Household profile and pledge | 4-step local profile and neighborhood/share card |
-| Low-emission routines | Smog-smart planner | Hour timeline and commute alternatives |
-| Indoor air quality hacks | Indoor toolkit | Purifier, ventilation, sealing, mask, cooking, and sweeping guidance |
-| Sustainable alternatives | Alternatives panel | Metro, induction, shared trips, no-burning actions |
-| Location + lifestyle tailoring | City/geolocation + profile | Rounded coordinates, commute, home, cooking, budget, and vulnerability profile |
-| Clear impact explanation | Impact explainer | CO2/NOx, purifier, and PM2.5 equivalents with assumptions |
+| Requirement                    | Feature                      | Implementation                                                                 |
+| ------------------------------ | ---------------------------- | ------------------------------------------------------------------------------ |
+| GenAI-powered assistant        | Gemini chat and Plan my day  | Server-only Gemini integration with JSON validation and deterministic fallback |
+| Families and communities       | Household profile and pledge | 4-step local profile and neighborhood/share card                               |
+| Low-emission routines          | Smog-smart planner           | Hour timeline and commute alternatives                                         |
+| Indoor air quality hacks       | Indoor toolkit               | Purifier, ventilation, sealing, mask, cooking, and sweeping guidance           |
+| Sustainable alternatives       | Alternatives panel           | Metro, induction, shared trips, no-burning actions                             |
+| Location + lifestyle tailoring | City/geolocation + profile   | Rounded coordinates, commute, home, cooking, budget, and vulnerability profile |
+| Clear impact explanation       | Impact explainer             | CO2/NOx, purifier, and PM2.5 equivalents with assumptions                      |
 
 ## Architecture
 
@@ -98,11 +98,11 @@ Smart Mode requires a real Gemini API key in `.env.local`; the example key is bl
 
 ## Environment
 
-| Variable | Required | Purpose |
-|---|---:|---|
-| GEMINI_API_KEY | No | Enables enhanced Gemini advice |
-| UPSTASH_REDIS_REST_URL | No | Optional distributed rate limiting |
-| UPSTASH_REDIS_REST_TOKEN | No | Optional distributed rate limiting |
+| Variable                 | Required | Purpose                            |
+| ------------------------ | -------: | ---------------------------------- |
+| GEMINI_API_KEY           |       No | Enables enhanced Gemini advice     |
+| UPSTASH_REDIS_REST_URL   |       No | Optional distributed rate limiting |
+| UPSTASH_REDIS_REST_TOKEN |       No | Optional distributed rate limiting |
 
 ## Commands
 

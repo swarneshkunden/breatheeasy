@@ -1,6 +1,19 @@
+import { z } from "zod";
+
 export type Language = "en" | "hi";
-export type MemberType = "kids" | "elderly" | "pregnant" | "respiratory" | "adults";
-export type CommuteMode = "walk" | "bike" | "two-wheeler" | "car" | "bus" | "metro";
+export type MemberType =
+  | "kids"
+  | "elderly"
+  | "pregnant"
+  | "respiratory"
+  | "adults";
+export type CommuteMode =
+  | "walk"
+  | "bike"
+  | "two-wheeler"
+  | "car"
+  | "bus"
+  | "metro";
 export type CookingFuel = "lpg" | "induction" | "wood";
 export type Budget = "low" | "medium" | "high";
 
@@ -15,27 +28,36 @@ export interface HouseholdProfile {
   budget: Budget;
 }
 
-export interface AirSnapshot {
-  aqi: number;
-  pm25: number;
-  pm10: number;
-  no2: number;
-  o3: number;
-  city: string;
-  latitude: number;
-  longitude: number;
-  hourly: HourlyAir[];
-  source: "live" | "demo";
-  updatedAt: string;
-  timezone: string | null;
-  utcOffsetSeconds: number | null;
-}
+const nullableAqiSchema = z.number().int().min(0).max(1000).nullable();
+const nullablePollutantSchema = z.number().min(0).max(2000).nullable();
 
-export interface HourlyAir {
-  time: string;
-  aqi: number;
-  pm25: number;
-}
+export const HourlyAirSchema = z.object({
+  time: z.string(),
+  aqi: nullableAqiSchema,
+  pm25: nullablePollutantSchema,
+  pm10: nullablePollutantSchema,
+  no2: nullablePollutantSchema,
+  o3: nullablePollutantSchema,
+});
+
+export const AirSnapshotSchema = z.object({
+  aqi: nullableAqiSchema,
+  pm25: nullablePollutantSchema,
+  pm10: nullablePollutantSchema,
+  no2: nullablePollutantSchema,
+  o3: nullablePollutantSchema,
+  city: z.string(),
+  latitude: z.number().min(-90).max(90).multipleOf(0.01),
+  longitude: z.number().min(-180).max(180).multipleOf(0.01),
+  hourly: z.array(HourlyAirSchema),
+  source: z.enum(["live", "demo", "unavailable"]),
+  updatedAt: z.string(),
+  timezone: z.string().nullable(),
+  utcOffsetSeconds: z.number().nullable(),
+});
+
+export type AirSnapshot = z.infer<typeof AirSnapshotSchema>;
+export type HourlyAir = z.infer<typeof HourlyAirSchema>;
 
 export interface CityResult {
   name: string;
@@ -56,7 +78,18 @@ export interface AdvicePlan {
   lowEmission: AdviceTip[];
   indoor: AdviceTip[];
   sustainable: AdviceTip[];
+  answer: string;
+  tips: string[];
+  followUps: string[];
   smartMode: "live" | "offline";
-  smartModeReason?: "missing_api_key" | "provider_auth" | "model_unavailable" | "quota_or_rate_limit" | "timeout" | "invalid_response" | "provider_error" | "network_error";
+  smartModeReason?:
+    | "missing_api_key"
+    | "provider_auth"
+    | "model_unavailable"
+    | "quota_or_rate_limit"
+    | "timeout"
+    | "invalid_response"
+    | "provider_error"
+    | "network_error";
   smartModeStatus?: number;
 }

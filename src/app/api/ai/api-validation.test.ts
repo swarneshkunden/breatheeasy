@@ -16,16 +16,25 @@ beforeEach(() => {
 afterEach(() => {
   if (originalEnv !== undefined) process.env.GEMINI_API_KEY = originalEnv;
   else delete process.env.GEMINI_API_KEY;
-  if (originalRedis !== undefined) process.env.UPSTASH_REDIS_REST_URL = originalRedis;
+  if (originalRedis !== undefined)
+    process.env.UPSTASH_REDIS_REST_URL = originalRedis;
   else delete process.env.UPSTASH_REDIS_REST_URL;
-  if (originalToken !== undefined) process.env.UPSTASH_REDIS_REST_TOKEN = originalToken;
+  if (originalToken !== undefined)
+    process.env.UPSTASH_REDIS_REST_TOKEN = originalToken;
   else delete process.env.UPSTASH_REDIS_REST_TOKEN;
 });
 
-function makeRequest(body: unknown, headers: Record<string, string> = {}): NextRequest {
+function makeRequest(
+  body: unknown,
+  headers: Record<string, string> = {},
+): NextRequest {
   return new NextRequest("http://localhost:3000/api/ai", {
     method: "POST",
-    headers: { "content-type": "application/json", origin: "http://localhost:3000", ...headers },
+    headers: {
+      "content-type": "application/json",
+      origin: "http://localhost:3000",
+      ...headers,
+    },
     body: typeof body === "string" ? body : JSON.stringify(body),
   });
 }
@@ -37,6 +46,7 @@ const validBody = {
   longitude: 77.23,
   currentAqi: 150,
   pm25: 85,
+  hourly: [],
   profile: {
     members: ["kids", "adults"],
     homeType: "apartment",
@@ -53,7 +63,10 @@ describe("AI API route - validation", () => {
   it("rejects invalid content type", async () => {
     const req = new NextRequest("http://localhost:3000/api/ai", {
       method: "POST",
-      headers: { "content-type": "text/plain", origin: "http://localhost:3000" },
+      headers: {
+        "content-type": "text/plain",
+        origin: "http://localhost:3000",
+      },
       body: "hello",
     });
     const res = await POST(req);
@@ -63,7 +76,10 @@ describe("AI API route - validation", () => {
   it("rejects oversized body", async () => {
     const req = new NextRequest("http://localhost:3000/api/ai", {
       method: "POST",
-      headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+      headers: {
+        "content-type": "application/json",
+        origin: "http://localhost:3000",
+      },
       body: "x".repeat(20000),
     });
     const res = await POST(req);
@@ -73,7 +89,10 @@ describe("AI API route - validation", () => {
   it("rejects malformed JSON", async () => {
     const req = new NextRequest("http://localhost:3000/api/ai", {
       method: "POST",
-      headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+      headers: {
+        "content-type": "application/json",
+        origin: "http://localhost:3000",
+      },
       body: "not json",
     });
     const res = await POST(req);

@@ -1,19 +1,27 @@
 "use client";
 
+import * as React from "react";
 import { categorizeAqi } from "@/lib/rules/engine";
 import type { AirSnapshot, CityResult } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
-import { Target } from "lucide-react";
+import { LoaderCircle, MapPin, Search, Target } from "lucide-react";
 import { CitySearch } from "@/components/CitySearch";
+import { guidance } from "@/lib/rules/safety";
+import { useRef } from "react";
+import { useEffect, useState } from "react";
+import type { Language } from "@/lib/types";
+import { LivingSkyline } from "@/components/LivingSkyline";
 
 interface AirDisplayProps {
   demo: boolean;
   current: AirSnapshot;
-  previewAqi: number;
+  previewAqi: number | null;
   previewCategory: ReturnType<typeof categorizeAqi>;
   CategoryIcon: LucideIcon;
   t: Record<string, string>;
+  language: Language;
   loading: boolean;
+  locating: boolean;
   onPlanDay: () => void;
   onLocate: () => void;
   onToggleFollow: () => void;
@@ -29,7 +37,9 @@ export function AirDisplay({
   previewCategory,
   CategoryIcon,
   t,
+  language,
   loading,
+  locating,
   onPlanDay,
   onLocate,
   onToggleFollow,
@@ -37,61 +47,192 @@ export function AirDisplay({
   locationError,
   onCitySelect,
 }: AirDisplayProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [scenarioAqi, setScenarioAqi] = useState(current.aqi ?? 100);
+  const airGuidance = guidance(current.aqi, "general", language);
+  const categoryLabels: Record<string, string> = {
+    good: t.categoryGood,
+    moderate: t.categoryModerate,
+    sensitive: t.categorySensitive,
+    unhealthy: t.categoryUnhealthy,
+    "very-unhealthy": t.categoryVeryUnhealthy,
+    hazardous: t.categoryHazardous,
+    unavailable: t.airUnavailable,
+  };
+  const categoryLabel =
+    categoryLabels[previewCategory.tone] ?? previewCategory.label;
+  useEffect(() => {
+    if (current.aqi !== null) setScenarioAqi(current.aqi);
+  }, [current.aqi]);
   return (
-    <section className="hero" aria-labelledby="air-heading" data-aqi={previewCategory.tone}>
+    <section
+      className="hero"
+      aria-labelledby="air-heading"
+      data-aqi={previewCategory.tone}
+    >
       <div className="hero-heading">
         <div className="location-title">
-          <p className="eyebrow">{t.snapshot}<span className="live-mark" aria-hidden="true" /></p>
-          <h1 id="air-heading">{demo ? "New Delhi" : current.city}</h1>
-          <p className="location-caption">A softer way to read the air around you</p>
+          <p className="eyebrow">
+            {t.snapshot}
+            <span className="live-mark" aria-hidden="true" />
+          </p>
+          <h1 id="air-heading">
+            {demo ? t.newDelhi : current.city || t.yourLocalAir}
+          </h1>
+          <p className="location-caption">{t.airCaption}</p>
+          {current.source === "unavailable" && (
+            <p className="location-error" role="status">
+              {t.chooseLocation}
+            </p>
+          )}
         </div>
         <div className="location-tools">
-          <button className="secondary location-button" onClick={onLocate} aria-label="Use my current location">
-            <Target size={16} aria-hidden="true" />
-          </button>
-          <button
-            className={`secondary location-button ${following ? "location-active" : ""}`}
-            aria-pressed={following}
-            aria-label={following ? "Stop following location" : "Follow my location"}
-            onClick={onToggleFollow}
-          >
-            {following ? "Following location" : "Follow my location"}
-          </button>
-          {following && <span className="following-indicator">Following your location, updates when you move</span>}
-          {locationError && <span className="location-error" role="alert">{locationError}</span>}
-          <CitySearch onSelect={onCitySelect} />
+          <div className="location-actions">
+            <button
+              type="button"
+              className="location-button use-location-button"
+              onClick={onLocate}
+              title={t.useMyLocation}
+              aria-busy={locating}
+              disabled={locating}
+            >
+              {locating ? (
+                <LoaderCircle
+                  className="location-spinner"
+                  size={18}
+                  aria-hidden="true"
+                />
+              ) : (
+                <Target size={18} aria-hidden="true" />
+              )}
+              <span>{locating ? t.locating : t.useMyLocation}</span>
+            </button>
+            <label className="follow-switch">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={following}
+                onChange={onToggleFollow}
+              />
+              <span>{t.keepUpdating}</span>
+            </label>
+          </div>
+          {following && (
+            <span className="following-indicator" role="status">
+              {t.followingLocation}
+            </span>
+          )}
+          {locationError && (
+            <div className="location-error" role="alert">
+              <MapPin size={16} aria-hidden="true" />
+              <span>{locationError}</span>
+              <button
+                type="button"
+                onClick={() => searchInputRef.current?.focus()}
+              >
+                <Search size={14} aria-hidden="true" /> {t.searchCity}
+              </button>
+            </div>
+          )}
+          <CitySearch
+            onSelect={onCitySelect}
+            language={language}
+            inputRef={searchInputRef}
+          />
+          {demo && (
+            <p className="demo-notice" role="status">
+              {t.demoPrompt}
+            </p>
+          )}
         </div>
       </div>
 
       <div className="hero-grid">
         <div className="hero-copy">
-          <div className={`category category-${previewCategory.tone}`}><CategoryIcon size={16} strokeWidth={1.8} aria-hidden="true" /><span aria-label={`Air quality: ${previewCategory.label}`}>{previewCategory.label}</span></div>
-          <strong className="aqi-number animate-in" key={previewAqi} aria-live="polite">{previewAqi}</strong>
-          <span className="aqi-unit">US AQI <span>·</span> {current.updatedAt ? "Updated just now" : "Current reading"}</span>
-          <h2>{previewAqi > 200 ? "Keep the family indoors" : previewAqi > 100 ? "Choose your outside moments" : "A little more room to breathe"}</h2>
-          <p>{previewAqi > 200
-            ? "Wear a well-fitted N95 or FFP2 outdoors if needed. Run filtration indoors and postpone strenuous activity."
-            : "Use the cleaner hours for time outside, and keep checking conditions as they change."}</p>
-          <button className="primary" onClick={onPlanDay} aria-expanded={false} aria-controls="assistant-panel">{loading ? "Building your plan…" : t.plan}<span aria-hidden="true">→</span></button>
+          <div className={`category category-${previewCategory.tone}`}>
+            <CategoryIcon size={16} strokeWidth={1.8} aria-hidden="true" />
+            <span aria-label={`${t.airQualityLabel}: ${categoryLabel}`}>
+              {categoryLabel}
+            </span>
+          </div>
+          <strong
+            className="aqi-number"
+            key={previewAqi ?? "unavailable"}
+            aria-live="polite"
+          >
+            {previewAqi ?? "—"}
+          </strong>
+          <span className="aqi-unit">
+            {previewAqi === null ? t.airUnavailable : t.liveReading}
+          </span>
+          <h2>{previewAqi === null ? t.airUnavailable : t.practicalPlan}</h2>
+          <p>{airGuidance.message}</p>
+          <button
+            className="primary"
+            onClick={onPlanDay}
+            aria-controls="assistant-panel"
+          >
+            {loading ? t.buildingPlan : t.plan}
+            <span aria-hidden="true">→</span>
+          </button>
+        </div>
+        <div className="hero-visual">
+          <LivingSkyline aqi={scenarioAqi} city={current.city || "your city"} />
         </div>
       </div>
 
-      <div className="pollutant-grid" aria-label="Pollutant readings">
+      <div className="sky-preview">
+        <div>
+          <p className="eyebrow">{t.feelDifference}</p>
+          <p className="preview-description">{t.scenarioDescription}</p>
+        </div>
+        <input
+          className="aqi-slider"
+          type="range"
+          min="0"
+          max="500"
+          step="1"
+          value={scenarioAqi}
+          aria-label={`${t.feelDifference}: ${t.scenarioDescription}`}
+          onChange={(event) => setScenarioAqi(Number(event.target.value))}
+        />
+        <p className="preview-reading">
+          {t.scenarioReading} <strong>{scenarioAqi}</strong>
+        </p>
+        <div className="range-labels">
+          <span>{t.cleaner}</span>
+          <span>{t.morePolluted}</span>
+        </div>
+      </div>
+
+      <div className="pollutant-grid" aria-label={t.pollutantReadings}>
         {[
-          ["PM2.5", current.pm25, "µg/m³", "Fine particles from combustion and dust"],
-          ["PM10", current.pm10, "µg/m³", "Coarse particles from construction and roads"],
-          ["NO₂", current.no2, "µg/m³", "Traffic exhaust gas"],
-          ["O₃", current.o3, "µg/m³", "Ground-level ozone (smog)"],
-        ].map(([label, value, unit, note]) => (
+          {
+            label: "PM2.5",
+            value: current.pm25,
+            unit: "µg/m³",
+            note: t.pm25Note,
+          },
+          {
+            label: "PM10",
+            value: current.pm10,
+            unit: "µg/m³",
+            note: t.pm10Note,
+          },
+          { label: "NO₂", value: current.no2, unit: "µg/m³", note: t.no2Note },
+          { label: "O₃", value: current.o3, unit: "µg/m³", note: t.o3Note },
+        ].map(({ label, value, unit, note }) => (
           <div className="pollutant" key={label}>
-            <span>{label}</span><strong>{value}</strong><small>{unit}</small>
+            <span>{label}</span>
+            <strong>{value ?? "—"}</strong>
+            <small>{value === null ? t.pollutantUnavailable : unit}</small>
             <span className="pollutant-note">{note}</span>
           </div>
         ))}
       </div>
 
-      <div className="data-attribution" aria-label="Data source">
-        <p>Air quality data from Open-Meteo · AQI calculated using US EPA standards · Location rounded before server use</p>
+      <div className="data-attribution" aria-label={t.dataSource}>
+        <p>{t.airFromOpenMeteo}</p>
       </div>
     </section>
   );

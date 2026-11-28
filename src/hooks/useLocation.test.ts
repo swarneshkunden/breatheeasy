@@ -3,7 +3,9 @@ import { act, renderHook } from "@testing-library/react";
 import { useLocation } from "./useLocation";
 
 const mockGetCurrentPosition = vi.fn();
-const mockWatchPosition = vi.fn(() => 7);
+const mockWatchPosition = vi.fn(
+  (_success: (position: GeolocationPosition) => void) => 7,
+);
 const mockClearWatch = vi.fn();
 
 function installGeolocation(secure = true) {
@@ -15,18 +17,42 @@ function installGeolocation(secure = true) {
       clearWatch: mockClearWatch,
     },
   });
-  Object.defineProperty(window, "isSecureContext", { configurable: true, value: secure });
+  Object.defineProperty(window, "isSecureContext", {
+    configurable: true,
+    value: secure,
+  });
 }
 
-function fireSuccess(callback: (pos: GeolocationPosition) => void, latitude = 28.6139, longitude = 77.2099) {
+function fireSuccess(
+  callback: (pos: GeolocationPosition) => void,
+  latitude = 28.6139,
+  longitude = 77.2099,
+) {
   callback({
-    coords: { latitude, longitude, accuracy: 10, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
+    coords: {
+      latitude,
+      longitude,
+      accuracy: 10,
+      altitude: null,
+      altitudeAccuracy: null,
+      heading: null,
+      speed: null,
+    },
     timestamp: Date.now(),
   } as unknown as GeolocationPosition);
 }
 
-function fireError(callback: (err: GeolocationPositionError) => void, code: number) {
-  callback({ code, message: "", PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as unknown as GeolocationPositionError);
+function fireError(
+  callback: (err: GeolocationPositionError) => void,
+  code: number,
+) {
+  callback({
+    code,
+    message: "",
+    PERMISSION_DENIED: 1,
+    POSITION_UNAVAILABLE: 2,
+    TIMEOUT: 3,
+  } as unknown as GeolocationPositionError);
 }
 
 beforeEach(() => {
@@ -50,7 +76,10 @@ describe("useLocation one-shot", () => {
     const success = mockGetCurrentPosition.mock.calls[0]?.[0];
     expect(success).toBeTypeOf("function");
     act(() => fireSuccess(success));
-    expect(result.current.coords).toEqual({ latitude: 28.61, longitude: 77.21 });
+    expect(result.current.coords).toEqual({
+      latitude: 28.61,
+      longitude: 77.21,
+    });
     expect(result.current.label).toBe("Your location (28.61°N, 77.21°E)");
     expect(result.current.error).toBeNull();
   });
@@ -62,7 +91,10 @@ describe("useLocation one-shot", () => {
       result.current.requestLocation();
     });
     act(() => fireSuccess(mockGetCurrentPosition.mock.calls[0]?.[0]));
-    expect(onChange).toHaveBeenCalledWith({ latitude: 28.61, longitude: 77.21 });
+    expect(onChange).toHaveBeenCalledWith({
+      latitude: 28.61,
+      longitude: 77.21,
+    });
   });
 
   it("handles permission denied with a calm message", () => {
@@ -71,7 +103,7 @@ describe("useLocation one-shot", () => {
       result.current.requestLocation();
     });
     act(() => fireError(mockGetCurrentPosition.mock.calls[0]?.[1], 1));
-    expect(result.current.error).toContain("Enable it");
+    expect(result.current.error).toContain("Allow it");
     expect(result.current.error).toContain("city");
   });
 
@@ -124,8 +156,8 @@ describe("useLocation follow toggle", () => {
     act(() => {
       result.current.setFollowing(true);
     });
-    const watchSuccess = (mockWatchPosition.mock.calls as unknown as [[(pos: GeolocationPosition) => void]])[0]![0];
-    expect(watchSuccess).toBeTypeOf("function");
+    const watchSuccess = mockWatchPosition.mock.calls[0]?.[0];
+    if (!watchSuccess) throw new Error("Expected a watch success callback");
     // first position establishes baseline
     act(() => fireSuccess(watchSuccess, 28.61, 77.21));
     onChange.mockClear();
@@ -134,7 +166,10 @@ describe("useLocation follow toggle", () => {
     expect(onChange).not.toHaveBeenCalled();
     // large move (> 1 km): refetch
     act(() => fireSuccess(watchSuccess, 28.63, 77.24));
-    expect(onChange).toHaveBeenCalledWith({ latitude: 28.63, longitude: 77.24 });
+    expect(onChange).toHaveBeenCalledWith({
+      latitude: 28.63,
+      longitude: 77.24,
+    });
   });
 
   it("clears watch on unmount", () => {
@@ -149,7 +184,10 @@ describe("useLocation follow toggle", () => {
 
   it("does not terminate tracking on re-render", () => {
     const cb1 = vi.fn();
-    const { result, rerender } = renderHook(({ cb }: { cb: () => void }) => useLocation({ onChange: cb }), { initialProps: { cb: cb1 } });
+    const { result, rerender } = renderHook(
+      ({ cb }: { cb: () => void }) => useLocation({ onChange: cb }),
+      { initialProps: { cb: cb1 } },
+    );
     act(() => {
       result.current.setFollowing(true);
     });
@@ -169,13 +207,19 @@ describe("useLocation follow toggle", () => {
     expect(mockWatchPosition).toHaveBeenCalledTimes(1);
     expect(mockClearWatch).not.toHaveBeenCalled();
     act(() => {
-      Object.defineProperty(document, "hidden", { configurable: true, value: true });
+      Object.defineProperty(document, "hidden", {
+        configurable: true,
+        value: true,
+      });
       document.dispatchEvent(new Event("visibilitychange"));
     });
     expect(mockClearWatch).toHaveBeenCalled();
     expect(result.current.following).toBe(false);
     act(() => {
-      Object.defineProperty(document, "hidden", { configurable: true, value: false });
+      Object.defineProperty(document, "hidden", {
+        configurable: true,
+        value: false,
+      });
       document.dispatchEvent(new Event("visibilitychange"));
     });
     expect(mockWatchPosition.mock.calls.length).toBeGreaterThanOrEqual(2);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Wind, CloudFog, Cloud, CloudSun, ShieldAlert, Sun } from "lucide-react";
+import { Wind } from "lucide-react";
 import { useHomeState } from "@/app/app/hooks/useHomeState";
 import { AirDisplay } from "./components/AirDisplay";
 import { FamilyScenario } from "./components/FamilyScenario";
@@ -10,41 +10,130 @@ import { ImpactSection } from "./components/ImpactSection";
 import { ToolkitSection } from "./components/ToolkitSection";
 import { ChatPanel } from "./components/ChatPanel";
 import { OnboardingModal } from "./components/OnboardingModal";
+import { BrandMark } from "@/components/BrandMark";
+import { PreferenceControls } from "@/components/PreferenceControls";
 
-export default function Home() {
+export default function Home({
+  initialLanguage = "en",
+  initialTheme = "system",
+}: {
+  initialLanguage?: "en" | "hi";
+  initialTheme?: "light" | "dark" | "system";
+}) {
   const {
-    language, setLanguage, demo, setDemo, air, profile, onboarding, setOnboarding,
-    step, setStep, offline, plan, chatOpen, setChatOpen, message, setMessage,
-    answer, loading, setLoading, streak, toolkit, scenarioActions, theme, setTheme,
-    previewAqi, current, t, cigarettes, previewCategory, CategoryIcon,
-    scenarioImpact, cleanestWindow, cleanestTime, timeline, locationHour, following, locationError, setFollowing,
-    fetchAir, locate, handleCitySelect, planDay, sendChat, saveProfile, sharePledge,
-    toggleScenarioAction, toggleTool, toggleMember, setHomeType, setPurifier,
-    setCommute, setCooking, setBudget,
-  } = useHomeState();
+    language,
+    setLanguage,
+    demo,
+    setDemo,
+    profile,
+    onboarding,
+    modalRef,
+    setOnboarding,
+    step,
+    setStep,
+    offline,
+    plan,
+    chatOpen,
+    setChatOpen,
+    message,
+    setMessage,
+    answer,
+    loading,
+    streak,
+    toolkit,
+    scenarioActions,
+    theme,
+    messages,
+    previewAqi,
+    current,
+    t,
+    cigarettes,
+    previewCategory,
+    CategoryIcon,
+    scenarioImpact,
+    cleanestTime,
+    timeline,
+    locationHour,
+    following,
+    locationError,
+    setFollowing,
+    locating,
+    locate,
+    handleCitySelect,
+    planDay,
+    sendChat,
+    saveProfile,
+    sharePledge,
+    toggleScenarioAction,
+    toggleTool,
+    toggleMember,
+    setHomeType,
+    setPurifier,
+    setCommute,
+    setCooking,
+    setBudget,
+    themePreference,
+    setThemePreference,
+  } = useHomeState({ language: initialLanguage, theme: initialTheme });
 
   return (
     <div className="app-shell" data-theme={theme}>
-      <a href="#main-content" className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:top-4 focus-visible:left-4 focus-visible:z-50 focus-visible:px-4 focus-visible:py-2 focus-visible:bg-accent focus-visible:text-background focus-visible:rounded focus-visible:font-medium">
+      <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
       <header className="topbar">
-        <button className="brand" aria-label="BreatheEasy home" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          <span className="brand-mark" aria-hidden="true"><Wind size={19} strokeWidth={1.7} /></span><span>BreatheEasy</span>
+        <button
+          className="brand"
+          aria-label="BreatheEasy home"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        >
+          <span className="brand-mark">
+            <BrandMark />
+          </span>
+          <span>BreatheEasy</span>
         </button>
         <div className="top-actions">
-          <button className="icon-button" aria-label="Switch language" onClick={() => setLanguage(language === "en" ? "hi" : "en")}>{language === "en" ? "हिं" : "EN"}</button>
-          <button className="icon-button theme-toggle" aria-label={`Switch to ${theme === "morning" ? "Dusk" : "Morning"} theme`} onClick={() => setTheme(theme === "morning" ? "dusk" : "morning")}>{theme === "morning" ? "Dusk" : "Morning"}</button>
-          <label className="demo-toggle">
-            <input type="checkbox" checked={demo} onChange={(event) => setDemo(event.target.checked)} aria-label="Demo mode" />
-            <span>Demo mode</span>
-          </label>
+          <PreferenceControls
+            initialLanguage={initialLanguage}
+            initialTheme={initialTheme}
+            language={language}
+            theme={themePreference}
+            onLanguageChange={setLanguage}
+            onThemeChange={setThemePreference}
+          />
         </div>
       </header>
 
       <main id="main-content">
-        {demo && <div className="demo-strip"><span className="demo-dot" />{t.demo} <span>Delhi-style severe smog scenario</span></div>}
-        {offline && <div className="offline-banner" role="status"><Wind size={16} aria-hidden="true" />Offline · showing your last known air snapshot</div>}
+        <div className="demo-strip">
+          <div className="demo-status" role="status">
+            <span
+              className={demo ? "demo-dot" : "live-mark"}
+              aria-hidden="true"
+            />
+            {demo
+              ? t.demoPrompt
+              : current.source === "unavailable"
+                ? t.noLocationPrompt
+                : t.livePrompt}
+          </div>
+          <label className="demo-toggle">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={demo}
+              onChange={(event) => setDemo(event.target.checked)}
+              aria-label={t.demo}
+            />
+            <span>{t.demo}</span>
+          </label>
+        </div>
+        {offline && (
+          <div className="offline-banner" role="status">
+            <Wind size={16} aria-hidden="true" />
+            {t.offlineBanner}
+          </div>
+        )}
 
         <AirDisplay
           demo={demo}
@@ -53,13 +142,19 @@ export default function Home() {
           previewCategory={previewCategory}
           CategoryIcon={CategoryIcon}
           t={t}
+          language={language}
           loading={loading}
-          onPlanDay={planDay}
+          locating={locating}
+          onPlanDay={() => {
+            void planDay();
+          }}
           onLocate={locate}
           onToggleFollow={() => setFollowing(!following)}
           following={following}
           locationError={locationError}
-          onCitySelect={handleCitySelect}
+          onCitySelect={(city) => {
+            void handleCitySelect(city);
+          }}
         />
 
         <FamilyScenario
@@ -67,29 +162,51 @@ export default function Home() {
           scenarioImpact={scenarioImpact}
           current={current}
           profile={profile}
+          language={language}
           onToggleAction={toggleScenarioAction}
           onEditHousehold={() => setOnboarding(true)}
           onAddFamily={() => setOnboarding(true)}
         />
 
         <PlanRituals
-          cleanestWindow={cleanestWindow}
           cleanestTime={cleanestTime}
+          currentAqi={current.aqi}
           timeline={timeline}
           locationHour={locationHour}
+          utcOffsetSeconds={current.utcOffsetSeconds}
+          language={language}
           streak={streak}
-          onSharePledge={sharePledge}
+          onSharePledge={() => {
+            void sharePledge();
+          }}
+          onEditHousehold={() => {
+            setStep(0);
+            setOnboarding(true);
+          }}
+          onAddFamily={() => {
+            setStep(0);
+            setOnboarding(true);
+          }}
         />
 
-        <AdviceSections plan={plan} />
+        <AdviceSections plan={plan} language={language} />
 
-        <ImpactSection cigarettes={cigarettes} />
+        <ImpactSection cigarettes={cigarettes} language={language} />
 
-        <ToolkitSection toolkit={toolkit} onToggleTool={toggleTool} />
+        <ToolkitSection
+          toolkit={toolkit}
+          air={current}
+          language={language}
+          onToggleTool={toggleTool}
+        />
 
         <footer className="footer-notes">
-          <p><strong>General guidance only.</strong> This is not medical advice. If symptoms are severe or worsen, seek qualified medical care.</p>
-          <p><strong>Privacy.</strong> Location is rounded before server use. The household profile is stored only in this browser.</p>
+          <p>
+            <strong>{t.generalGuidance}</strong> {t.medicalDisclaimer}
+          </p>
+          <p>
+            <strong>{t.privacyHeading}</strong> {t.privacyDescription}
+          </p>
         </footer>
 
         {chatOpen && (
@@ -97,23 +214,28 @@ export default function Home() {
             loading={loading}
             message={message}
             answer={answer}
+            messages={messages}
             plan={plan}
             onClose={() => setChatOpen(false)}
             onMessageChange={(value) => setMessage(value)}
-            onSendChat={sendChat}
-            onTipClick={(title) => setMessage(title)}
+            onSendChat={(text) => {
+              void sendChat(text);
+            }}
           />
         )}
 
         {onboarding && (
           <OnboardingModal
             onboarding={onboarding}
+            modalRef={modalRef}
             step={step}
             profile={profile}
             onClose={() => setOnboarding(false)}
             onBack={() => setStep(step - 1)}
             onNext={() => setStep(step + 1)}
-            onSave={saveProfile}
+            onSave={() => {
+              void saveProfile();
+            }}
             onMemberToggle={toggleMember}
             onHomeTypeChange={setHomeType}
             onPurifierToggle={setPurifier}
@@ -125,7 +247,10 @@ export default function Home() {
       </main>
 
       <nav className="bottom-nav" aria-label="Main navigation">
-        <a href="#air-heading">Today</a><a href="#plan">Plan</a><a href="#toolkit">Toolkit</a><a href="#community">Community</a>
+        <a href="#air-heading">Today</a>
+        <a href="#plan">Plan</a>
+        <a href="#toolkit">Toolkit</a>
+        <a href="#community">Community</a>
       </nav>
     </div>
   );
