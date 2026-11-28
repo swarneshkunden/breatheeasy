@@ -1,9 +1,8 @@
-export function PrivacyStrip() {
+export function PrivacyStrip({ t }: { t: Record<string, string> }) {
   return (
-    <div className="privacy-strip" role="contentinfo">
+    <div className="landing-privacy-strip">
       <p>
-        <strong>Privacy.</strong> Location is rounded to two decimals before any server use, and your household profile
-        lives only in this browser. No trackers. General guidance only — not medical advice.
+        <strong>{t.privacy}</strong> {t.privacyDescription}
       </p>
     </div>
   );

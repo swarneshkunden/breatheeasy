@@ -7,7 +7,11 @@ interface LogEntry {
   [key: string]: string | number | boolean | undefined;
 }
 
-function log(level: LogLevel, message: string, extra: Record<string, unknown> = {}): void {
+function log(
+  level: LogLevel,
+  message: string,
+  extra: Record<string, unknown> = {},
+): void {
   if (process.env.NODE_ENV === "test") return; // Avoid noise in test output.
   const entry: LogEntry = {
     level,

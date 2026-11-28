@@ -10,12 +10,20 @@ describe("pollutant conversions and impact calculations", () => {
     });
     it("calculates CO2 avoided for 5km car trip", () => {
       const result = tripImpact(5);
-      const expectedCo2 = Math.round(5 * EMISSION_CONSTANTS.petrolCarGCo2PerKm - 5 * EMISSION_CONSTANTS.metroGCo2PerKm);
+      const expectedCo2 = Math.round(
+        5 * EMISSION_CONSTANTS.petrolCarGCo2PerKm -
+          5 * EMISSION_CONSTANTS.metroGCo2PerKm,
+      );
       expect(result.co2AvoidedG).toBe(expectedCo2);
     });
     it("calculates NOx avoided", () => {
       const result = tripImpact(5);
-      const expectedNoX = Math.round((5 * EMISSION_CONSTANTS.petrolCarGNoXPerKm - 5 * EMISSION_CONSTANTS.metroGNoXPerKm) * 100) / 100;
+      const expectedNoX =
+        Math.round(
+          (5 * EMISSION_CONSTANTS.petrolCarGNoXPerKm -
+            5 * EMISSION_CONSTANTS.metroGNoXPerKm) *
+            100,
+        ) / 100;
       expect(result.noxAvoidedG).toBe(expectedNoX);
     });
     it("distance zero returns zero", () => {

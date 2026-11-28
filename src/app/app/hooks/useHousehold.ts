@@ -29,6 +29,7 @@ interface UseHouseholdReturn {
 
 export function useHousehold(): UseHouseholdReturn {
   const [profile, setProfileState] = useState<HouseholdProfile>(defaultProfile);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     try {
@@ -38,22 +39,32 @@ export function useHousehold(): UseHouseholdReturn {
         if (parsed.success) setProfileState(parsed.data);
       }
     } catch {
-      // Corrupted local storage: keep defaults.
+      localStorage.removeItem("breatheeasy-profile");
+    } finally {
+      setLoaded(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (loaded)
+      localStorage.setItem("breatheeasy-profile", JSON.stringify(profile));
+  }, [loaded, profile]);
 
   const setProfile = useCallback((next: HouseholdProfile) => {
     setProfileState(next);
   }, []);
 
-  const toggleMember = useCallback((member: HouseholdProfile["members"][number]) => {
-    setProfileState((prev) => ({
-      ...prev,
-      members: prev.members.includes(member)
-        ? prev.members.filter((item) => item !== member)
-        : [...prev.members, member],
-    }));
-  }, []);
+  const toggleMember = useCallback(
+    (member: HouseholdProfile["members"][number]) => {
+      setProfileState((prev) => ({
+        ...prev,
+        members: prev.members.includes(member)
+          ? prev.members.filter((item) => item !== member)
+          : [...prev.members, member],
+      }));
+    },
+    [],
+  );
 
   const setHomeType = useCallback((homeType: HouseholdProfile["homeType"]) => {
     setProfileState((prev) => ({ ...prev, homeType }));

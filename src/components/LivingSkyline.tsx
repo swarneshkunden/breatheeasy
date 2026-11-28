@@ -1,7 +1,7 @@
 "use memo";
 
 import { memo } from "react";
-import { skyLayerMix, visibilityKm } from "@/lib/presentation";
+import { visibilityKm } from "@/lib/presentation";
 
 interface LivingSkylineProps {
   aqi: number;
@@ -9,19 +9,42 @@ interface LivingSkylineProps {
 }
 
 function LivingSkylineView({ aqi, city }: LivingSkylineProps) {
-  const colors = skyLayerMix(aqi);
   const visibility = visibilityKm(aqi);
+  const farOpacity = Math.max(0.42, 0.82 - aqi / 1250);
 
   return (
     <div className="skyline-column">
-      <div className="skyline" role="img" aria-label={`Illustrated skyline for ${city} at preview AQI ${aqi}`}>
-        <svg viewBox="0 0 680 260" preserveAspectRatio="xMidYMax slice" aria-labelledby="skyline-title skyline-desc">
+      <div
+        className="skyline"
+        role="img"
+        aria-label={`Illustrated skyline preview for ${city} at scenario AQI ${aqi}`}
+      >
+        <svg
+          viewBox="0 0 680 260"
+          preserveAspectRatio="xMidYMax slice"
+          aria-labelledby="skyline-title skyline-desc"
+        >
           <title id="skyline-title">Living city skyline</title>
-          <desc id="skyline-desc">A distant city, dome, houses, and trees fade as AQI rises.</desc>
-          <rect width="680" height="260" fill={colors.sky} />
-          <circle cx="566" cy="55" r="22" fill="#F2D8A2" opacity={colors.sunOpacity} />
+          <desc id="skyline-desc">
+            An illustrative city skyline changes with the scenario slider; it is
+            not a measured visibility reading.
+          </desc>
+          <rect width="680" height="260" fill="var(--skyline-sky)" />
+          <circle
+            cx="566"
+            cy="55"
+            r="22"
+            fill="var(--skyline-sun)"
+            opacity={Math.max(0.12, 1 - aqi / 500)}
+          />
 
-          <g fill={colors.far} opacity={aqi > 300 ? 0.42 : aqi > 200 ? 0.62 : 0.82}>
+          <g
+            fill="var(--skyline-far)"
+            stroke="var(--skyline-outline)"
+            strokeWidth="1.5"
+            vectorEffect="non-scaling-stroke"
+            opacity={farOpacity}
+          >
             <rect x="24" y="96" width="37" height="118" />
             <rect x="74" y="70" width="28" height="144" />
             <rect x="118" y="108" width="48" height="106" />
@@ -35,7 +58,12 @@ function LivingSkylineView({ aqi, city }: LivingSkylineProps) {
             <rect x="616" y="106" width="38" height="108" />
           </g>
 
-          <g fill={colors.mid}>
+          <g
+            fill="var(--skyline-mid)"
+            stroke="var(--skyline-outline)"
+            strokeWidth="1.5"
+            vectorEffect="non-scaling-stroke"
+          >
             <rect x="0" y="170" width="76" height="90" />
             <rect x="88" y="142" width="58" height="118" />
             <rect x="158" y="164" width="72" height="96" />
@@ -50,7 +78,12 @@ function LivingSkylineView({ aqi, city }: LivingSkylineProps) {
             <rect x="303" y="118" width="4" height="12" />
           </g>
 
-          <g fill={colors.near}>
+          <g
+            fill="var(--skyline-near)"
+            stroke="var(--skyline-outline)"
+            strokeWidth="1.5"
+            vectorEffect="non-scaling-stroke"
+          >
             <rect x="0" y="220" width="680" height="40" />
             <rect x="48" y="196" width="74" height="24" />
             <rect x="132" y="202" width="54" height="18" />
@@ -61,15 +94,27 @@ function LivingSkylineView({ aqi, city }: LivingSkylineProps) {
             <circle cx="412" cy="198" r="20" />
             <circle cx="436" cy="207" r="12" />
           </g>
-          <rect width="680" height="260" fill="#76655A" opacity={Math.min(0.38, 0.03 + aqi / 1100)} />
+          <rect
+            width="680"
+            height="260"
+            fill="var(--skyline-haze)"
+            opacity={Math.min(0.38, 0.03 + aqi / 1100)}
+          />
         </svg>
       </div>
-      <p className="sr-only">The distant skyline, dome, houses, trees, and haze are an illustrated AQI preview for {city}. The visible label is an approximation, not a measured reading.</p>
+      <p className="sr-only">
+        The distant skyline, dome, houses, trees, and haze are an illustration
+        for {city}. The visible AQI is a scenario, not a live reading.
+      </p>
       <div className="skyline-caption">
         <span>THE LIVING SKYLINE</span>
-        <span>You can see about <strong>{visibility.toFixed(1)} km</strong> today</span>
+        <span>
+          Illustrative visibility: <strong>{visibility.toFixed(1)} km</strong>
+        </span>
       </div>
-      <p className="assumption-note">Approximation: AQI 0–400 visibility formula, not a meteorological reading.</p>
+      <p className="assumption-note">
+        Scenario estimate only, not a meteorological measurement.
+      </p>
     </div>
   );
 }

@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [handoff-finish]
   pull_request:
-    branches: [handoff-finish]
+
+permissions:
+  contents: read
 
 jobs:
   quality:
@@ -15,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
@@ -31,7 +32,10 @@ jobs:
         run: npm run typecheck
 
       - name: Run unit tests
-        run: npm run test
+        run: npm run test:coverage
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E tests
         run: npm run test:e2e
@@ -40,4 +44,7 @@ jobs:
         run: npm run build
 
       - name: Audit dependencies
-        run: npm audit --production
+        run: npm audit --omit=dev
+
+      - name: Lighthouse CI
+        run: npm run lighthouse

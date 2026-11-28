@@ -9,7 +9,7 @@ export const cityResultSchema = z.object({
 });
 
 export const cityResponseSchema = z.object({
-  results: z.array(cityResultSchema),
+  results: z.array(cityResultSchema).optional(),
 });
 
 export type ValidatedCityResult = z.infer<typeof cityResultSchema>;
@@ -22,5 +22,5 @@ export function validateCityResponse(data: unknown): ValidatedCityResponse {
 }
 
 export function validateCityResults(data: unknown): ValidatedCityResult[] {
-  return validateCityResponse(data).results;
+  return validateCityResponse(data).results ?? [];
 }

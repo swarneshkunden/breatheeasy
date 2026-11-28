@@ -1,176 +1,182 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-test("demo plan and language work", async ({ page }) => {
+const viewports = [
+  { width: 360, height: 800 },
+  { width: 768, height: 1024 },
+  { width: 1440, height: 1000 },
+];
+const themes = ["light", "dark"] as const;
+const languages = ["en", "hi"] as const;
+const pages = [
+  { path: "/", name: "landing" },
+  { path: "/app", name: "app" },
+] as const;
+
+test("location action has visible, accessible text", async ({ page }) => {
   await page.goto("/app");
+  const locationButton = page.getByRole("button", { name: "Use my location" });
+  await expect(locationButton).toBeVisible();
+  await expect(locationButton).toHaveAttribute("title", "Use my location");
+  await expect(locationButton).not.toHaveAttribute("aria-label", /.*/);
+  await expect(locationButton).toContainText("Use my location");
+  await expect(page.getByText(/No location selected/)).toBeVisible();
+});
+
+test("demo mode is labeled and household profile saves", async ({ page }) => {
+  await page.goto("/app");
+  const demoSwitch = page.getByRole("switch", { name: "Demo data" });
+  await demoSwitch.check();
   await expect(page.getByRole("heading", { name: "New Delhi" })).toBeVisible();
-  await expect(page.getByText("Hazardous")).toBeVisible();
-  await page.getByRole("button", { name: "Switch language" }).click();
-  await expect(page.getByText("डेमो डेटा")).toBeVisible();
-  await page.getByRole("button", { name: "मेरे परिवार का दिन बनाएं" }).click();
-  await expect(page.getByRole("complementary", { name: "BreatheEasy assistant" })).toBeVisible();
+  await expect(page.getByText(/Showing demo data/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit household" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Edit household" }),
+  ).toBeVisible();
 });
 
-test("main page has no serious accessibility violations", async ({ page }) => {
-  await page.goto("/app");
-  const results = await new AxeBuilder({ page } as never).analyze();
-  expect(results.violations.filter((violation) => violation.impact === "serious" || violation.impact === "critical")).toEqual([]);
-});
-
-test("living skyline slider and what-if keyboard flows", async ({ page }) => {
-  await page.goto("/app");
-  const slider = page.getByRole("slider", { name: "Air quality preview" });
-  await slider.focus();
-  await slider.press("Home");
-  await expect(page.locator(".aqi-number")).toHaveText("20");
-  await expect(page.getByText("Good", { exact: true })).toBeVisible();
-  await slider.press("ArrowRight");
-  await expect(page.locator(".aqi-number")).not.toHaveText("20");
-
-  const purifier = page.getByRole("button", { name: "Purifier in bedroom" });
-  await purifier.focus();
-  await purifier.press("Enter");
-  await expect(purifier).toHaveAttribute("aria-pressed", /false|true/);
-  await expect(page.getByText("CO₂ avoided today")).toBeVisible();
-});
-
-test("demo and offline states remain usable", async ({ page, context }) => {
-  await page.goto("/app");
-  await expect(page.getByText("Delhi-style severe smog scenario")).toBeVisible();
-  await page.getByRole("checkbox", { name: "Demo mode" }).uncheck();
-  await context.setOffline(true);
-  await expect(page.getByRole("status")).toContainText("Offline");
-  await page.getByRole("button", { name: /Plan my family's day/i }).click();
-  await expect(page.getByRole("complementary", { name: "BreatheEasy assistant" })).toBeVisible();
-});
-
-test("both themes pass serious axe checks", async ({ page }) => {
-  test.setTimeout(60_000);
-  await page.goto("/app");
-  const dark = await new AxeBuilder({ page } as never).analyze();
-  expect(dark.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""))).toEqual([]);
-  await page.getByRole("button", { name: "Switch to Morning theme" }).click();
-  const light = await new AxeBuilder({ page } as never).analyze();
-  expect(light.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""))).toEqual([]);
-});
-
-test("pledge creates a downloadable share card", async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
-    Object.defineProperty(navigator, "canShare", { configurable: true, value: undefined });
+test("chat sends suggested questions and shows the returned answer", async ({
+  page,
+}) => {
+  const messages: string[] = [];
+  await page.route("**/api/ai", async (route) => {
+    const body = route.request().postDataJSON() as { message: string };
+    messages.push(body.message);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        answer: "Use filtered indoor air while readings are unavailable.",
+        tips: ["When can I open the windows?"],
+        followUps: [],
+        lowEmission: [],
+        indoor: [],
+        sustainable: [],
+        smartMode: "offline",
+        smartModeReason: "missing_api_key",
+      }),
+    });
   });
   await page.goto("/app");
-  await page.evaluate(() => {
-    const testWindow = window as Window & { pledgeCardTriggered?: boolean };
-    testWindow.pledgeCardTriggered = false;
-    const originalClick = HTMLAnchorElement.prototype.click;
-    HTMLAnchorElement.prototype.click = function () {
-      if (this.download === "breatheeasy-clean-air-pledge.png") {
-        testWindow.pledgeCardTriggered = true;
-        return;
-      }
-      originalClick.call(this);
-    };
+  await page.getByRole("button", { name: "Plan my family's day" }).click();
+  const chat = page.getByRole("complementary", {
+    name: "BreatheEasy assistant",
   });
-  await page.getByRole("button", { name: "Add my family" }).click();
-  await expect.poll(() => page.evaluate(() => (window as Window & { pledgeCardTriggered?: boolean }).pledgeCardTriggered)).toBe(true);
+  await expect(chat).toBeVisible();
+  await expect(
+    chat.getByText("Use filtered indoor air while readings are unavailable."),
+  ).toBeVisible();
+  await chat
+    .getByRole("button", { name: "When can I open the windows?" })
+    .click();
+  await expect.poll(() => messages).toHaveLength(2);
+  expect(messages[1]).toBe("When can I open the windows?");
 });
 
-test("geolocation one-shot uses granted coordinates", async ({ context, page }) => {
-  await context.grantPermissions(["geolocation"]);
-  await context.setGeolocation({ latitude: 28.61, longitude: 77.21, accuracy: 10 });
-  const airCalls: string[] = [];
-  await context.route("**/api/air", (request) => {
-    airCalls.push(request.request().url());
-    return request.continue();
+test("city selection closes suggestions and requests localized results", async ({
+  page,
+}) => {
+  let geocodeUrl = "";
+  await page.route("**/api/geocode**", async (route) => {
+    geocodeUrl = route.request().url();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        results: [
+          {
+            name: "Pune",
+            admin1: "Maharashtra",
+            country: "India",
+            latitude: 18.52,
+            longitude: 73.86,
+          },
+        ],
+      }),
+    });
   });
-  await page.goto("/app");
-  await page.getByRole("button", { name: "Use my location" }).click();
-  await expect.poll(() => airCalls.length).toBeGreaterThanOrEqual(1);
-  await expect(page.getByText("Your location (28.61°N, 77.21°E)")).toBeVisible();
-});
-
-test("moving over 1 km triggers a refresh, under 1 km does not", async ({ context, page }) => {
-  await context.grantPermissions(["geolocation"]);
-  await context.setGeolocation({ latitude: 28.61, longitude: 77.21, accuracy: 10 });
-  const airCalls: string[] = [];
-  await context.route("**/api/air", (request) => {
-    airCalls.push(request.request().url());
-    return request.continue();
+  await page.route("**/api/air**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        aqi: 72,
+        pm25: 18,
+        pm10: 24,
+        no2: 8,
+        o3: 30,
+        city: "Pune",
+        latitude: 18.52,
+        longitude: 73.86,
+        hourly: [],
+        source: "live",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        timezone: "Asia/Kolkata",
+        utcOffsetSeconds: 19800,
+      }),
+    });
   });
-  await page.goto("/app");
-  await page.getByRole("button", { name: "Follow my location" }).click();
-  await expect.poll(() => airCalls.length).toBeGreaterThanOrEqual(1);
-  const baseline = airCalls.length;
-  // Move under 1 km: should not refetch.
-  await context.setGeolocation({ latitude: 28.6105, longitude: 77.2105, accuracy: 10 });
-  await page.waitForTimeout(1200);
-  expect(airCalls.length).toBe(baseline);
-  // Move over 1 km: should refetch.
-  await context.setGeolocation({ latitude: 28.63, longitude: 77.24, accuracy: 10 });
-  await expect.poll(() => airCalls.length).toBeGreaterThan(baseline);
-});
-
-test("denied location falls back to city search", async ({ context, page }) => {
-  await context.grantPermissions([]);
-  await context.setGeolocation({ latitude: 0, longitude: 0, accuracy: 10 });
-  await page.goto("/app");
-  await page.getByRole("button", { name: "Use my location" }).click();
-  await expect(page.getByText(/location access is blocked/i)).toBeVisible();
-  await page.getByRole("button", { name: "Follow my location" }).click();
-  await expect(page.getByText(/location access is blocked/i)).toBeVisible();
-});
-
-test("city search loads live air for the selected city and keeps its label", async ({ page }) => {
-  await page.route("**/api/geocode**", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify([{
-      name: "Pune",
-      admin1: "Maharashtra",
-      country: "India",
-      latitude: 18.52,
-      longitude: 73.86,
-    }]),
-  }));
-  await page.route("**/api/air**", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({
-      aqi: 72,
-      pm25: 18,
-      pm10: 24,
-      no2: 8,
-      o3: 30,
-      city: "Your location",
-      latitude: 18.52,
-      longitude: 73.86,
-      hourly: [],
-      source: "live",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-      timezone: "Asia/Kolkata",
-      utcOffsetSeconds: 19800,
-    }),
-  }));
 
   await page.goto("/app");
-  const search = page.getByRole("combobox", { name: "Search city" });
+  await page.getByRole("button", { name: "हि" }).click();
+  const search = page.getByRole("combobox");
   await search.fill("Pune");
-  await page.getByRole("option", { name: "Pune, Maharashtra, India" }).click();
-
-  await expect(page.getByRole("heading", { name: "Pune, Maharashtra, India" })).toBeVisible();
-  await expect(page.locator(".aqi-number")).toHaveText("72");
-  await expect(page.getByText("Delhi-style severe smog scenario")).toHaveCount(0);
+  const city = page.getByRole("option", { name: "Pune, Maharashtra, India" });
+  await expect(city).toBeVisible();
+  await expect.poll(() => geocodeUrl).toContain("lang=hi");
+  await city.click();
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Pune, Maharashtra, India" }),
+  ).toBeVisible();
 });
 
-test("landing page hydrates without application hydration errors", async ({ page }) => {
-  const hydrationErrors: string[] = [];
-  page.on("console", (message) => {
-    if (message.type() === "error" && /hydration|hydrated/i.test(message.text())) {
-      hydrationErrors.push(message.text());
+for (const pageSpec of pages) {
+  for (const viewport of viewports) {
+    for (const theme of themes) {
+      for (const language of languages) {
+        test(`${pageSpec.name} screenshot and axe ${viewport.width}px ${theme} ${language}`, async ({
+          page,
+        }) => {
+          await page.setViewportSize(viewport);
+          await page.goto(pageSpec.path);
+          if (language === "hi") {
+            await page.locator('button[lang="hi"]').click();
+          }
+          await page
+            .locator(".theme-control button")
+            .nth(theme === "dark" ? 1 : 0)
+            .click();
+
+          if (pageSpec.path === "/app") {
+            await expect(
+              page.getByRole("button", {
+                name:
+                  language === "en"
+                    ? "Use my location"
+                    : "मेरी लोकेशन इस्तेमाल करें",
+              }),
+            ).toBeVisible();
+          } else {
+            await expect(page.locator("main")).toBeVisible();
+          }
+          await page.evaluate(() => document.fonts.ready);
+          const violations = await new AxeBuilder({ page }).analyze();
+          expect(violations.violations).toEqual([]);
+          await expect(page).toHaveScreenshot(
+            `${pageSpec.name}-${viewport.width}-${theme}-${language}.png`,
+            { animations: "disabled", caret: "hide" },
+          );
+        });
+      }
     }
-  });
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Breathe easier, one family at a time" })).toBeVisible();
-  expect(hydrationErrors).toEqual([]);
-});
+  }
+}

@@ -1,6 +1,11 @@
 const toRad = (value: number) => (value * Math.PI) / 180;
 
-export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+export function distanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
   const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
@@ -26,10 +31,16 @@ export function shouldRefetch(
 ): boolean {
   if (!prev) return true;
   if (now - prev.timestamp > REFRESH_INTERVAL_MS) return true;
-  return distanceKm(prev.latitude, prev.longitude, next.latitude, next.longitude) > REFRESH_DISTANCE_KM;
+  return (
+    distanceKm(prev.latitude, prev.longitude, next.latitude, next.longitude) >
+    REFRESH_DISTANCE_KM
+  );
 }
 
-export function formatLocationLabel(latitude: number, longitude: number): string {
+export function formatLocationLabel(
+  latitude: number,
+  longitude: number,
+): string {
   const latDir = latitude >= 0 ? "N" : "S";
   const lonDir = longitude >= 0 ? "E" : "W";
   return `Your location (${Math.abs(latitude).toFixed(2)}\u00B0${latDir}, ${Math.abs(longitude).toFixed(2)}\u00B0${lonDir})`;

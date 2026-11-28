@@ -2,7 +2,8 @@ import { z } from "zod";
 
 const envSchema = z.object({
   GEMINI_API_KEY: z.preprocess(
-    (value) => typeof value === "string" && value.trim() === "" ? undefined : value,
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? undefined : value,
     z.string().min(20).optional(),
   ),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
@@ -14,8 +15,12 @@ export function validateEnvironment(environment: NodeJS.ProcessEnv) {
   if (!parsed.success) {
     throw new Error("Invalid server environment configuration.");
   }
-  if ((parsed.data.UPSTASH_REDIS_REST_URL && !parsed.data.UPSTASH_REDIS_REST_TOKEN)
-    || (!parsed.data.UPSTASH_REDIS_REST_URL && parsed.data.UPSTASH_REDIS_REST_TOKEN)) {
+  if (
+    (parsed.data.UPSTASH_REDIS_REST_URL &&
+      !parsed.data.UPSTASH_REDIS_REST_TOKEN) ||
+    (!parsed.data.UPSTASH_REDIS_REST_URL &&
+      parsed.data.UPSTASH_REDIS_REST_TOKEN)
+  ) {
     throw new Error("Upstash rate limiting requires both REST URL and token.");
   }
   return parsed.data;

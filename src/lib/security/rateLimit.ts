@@ -17,14 +17,20 @@ function pruneExpired(now: number): void {
 function enforceMaxSize(): void {
   if (windows.size <= MAX_WINDOWS) return;
   // Evict oldest entries (by resetAt) to stay under limit.
-  const entries = Array.from(windows.entries()).sort(([, a], [, b]) => a.resetAt - b.resetAt);
+  const entries = Array.from(windows.entries()).sort(
+    ([, a], [, b]) => a.resetAt - b.resetAt,
+  );
   const toEvict = entries.slice(0, windows.size - MAX_WINDOWS);
   for (const [ip] of toEvict) {
     windows.delete(ip);
   }
 }
 
-export function checkRateLimit(ip: string, limit = 10, windowMs = 60_000): {
+export function checkRateLimit(
+  ip: string,
+  limit = 10,
+  windowMs = 60_000,
+): {
   allowed: boolean;
   retry: number;
 } {

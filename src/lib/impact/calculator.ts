@@ -18,6 +18,10 @@ export function purifierImpact(roomSizeM2: number, cadr: number) {
   return Math.round(reduction);
 }
 
-export function exposureCigarettes(pm25: number) {
-  return Math.round((pm25 / EMISSION_CONSTANTS.cigaretteEquivalentPm25Per24h) * 10) / 10;
+export function exposureCigarettes(pm25: number | null): number | null {
+  if (pm25 === null) return null;
+  return (
+    Math.round((pm25 / EMISSION_CONSTANTS.cigaretteEquivalentPm25Per24h) * 10) /
+    10
+  );
 }

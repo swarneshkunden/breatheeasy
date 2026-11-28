@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { clientIp } from "@/lib/security/validation";
-import { checkRateLimit, AI_LIMITS } from "@/lib/security/distributed-rate-limit";
+import { aiRequestSchema, clientIp } from "@/lib/security/validation";
+import {
+  checkRateLimit,
+  AI_LIMITS,
+} from "@/lib/security/distributed-rate-limit";
 import { csrfGuard } from "@/lib/security/csrf";
 import { generateAiPlan } from "@/lib/ai/plan-service";
 import type { AiPlanInput } from "@/lib/ai/plan-service";
 
-export const maxDuration = 70;
+export const maxDuration = 20;
 
 const MAX_REQUEST_BODY_BYTES = 16000;
 
-async function readBodyWithLimit(request: NextRequest, maxBytes: number): Promise<{ ok: true; text: string } | { ok: false; status: number }> {
+async function readBodyWithLimit(
+  request: NextRequest,
+  maxBytes: number,
+): Promise<{ ok: true; text: string } | { ok: false; status: number }> {
   // Early rejection via Content-Length when available.
   const contentLength = request.headers.get("content-length");
   if (contentLength) {
@@ -61,11 +66,19 @@ export async function POST(request: NextRequest) {
   const ip = clientIp(request);
   const limit = await checkRateLimit(ip, AI_LIMITS);
   if (!limit.allowed) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(limit.retry) } });
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(limit.retry) } },
+    );
   }
 
-  if (request.headers.get("content-type")?.includes("application/json") !== true) {
-    return NextResponse.json({ error: "Invalid content type" }, { status: 415 });
+  if (
+    request.headers.get("content-type")?.includes("application/json") !== true
+  ) {
+    return NextResponse.json(
+      { error: "Invalid content type" },
+      { status: 415 },
+    );
   }
 
   const bodyResult = await readBodyWithLimit(request, MAX_REQUEST_BODY_BYTES);
@@ -80,29 +93,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const parsed = z.object({
-    message: z.string().trim().min(1).max(1200),
-    language: z.enum(["en", "hi"]),
-    latitude: z.number().min(-90).max(90),
-    longitude: z.number().min(-180).max(180),
-    currentAqi: z.number().int().min(0).max(1000),
-    pm25: z.number().min(0).max(2000),
-    profile: z.object({
-      members: z.array(z.enum(["kids", "elderly", "pregnant", "respiratory", "adults"])).max(5),
-      homeType: z.enum(["apartment", "house"]),
-      hasAc: z.boolean(),
-      hasPurifier: z.boolean(),
-      windows: z.enum(["sealed", "normal"]),
-      commute: z.enum(["walk", "bike", "two-wheeler", "car", "bus", "metro"]),
-      cooking: z.enum(["lpg", "induction", "wood"]),
-      budget: z.enum(["low", "medium", "high"]),
-    }),
-  }).safeParse(body);
+  const parsed = aiRequestSchema.safeParse(body);
 
-  if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  if (!parsed.success)
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
   const input: AiPlanInput = parsed.data;
   const result = await generateAiPlan(input);
 
-  return NextResponse.json(result, { headers: { "Cache-Control": "private, max-age=0, no-cache" } });
+  return NextResponse.json(result, {
+    headers: { "Cache-Control": "private, max-age=0, no-cache" },
+  });
 }

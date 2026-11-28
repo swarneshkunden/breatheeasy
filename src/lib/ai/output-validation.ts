@@ -8,6 +8,9 @@ const adviceTipSchema = z.object({
 });
 
 export const outputSchema = z.object({
+  answer: z.string().min(1).max(1200),
+  tips: z.array(z.string().trim().min(1).max(200)).max(8),
+  followUps: z.array(z.string().trim().min(1).max(200)).max(8),
   lowEmission: z.array(adviceTipSchema).min(1).max(10),
   indoor: z.array(adviceTipSchema).min(1).max(10),
   sustainable: z.array(adviceTipSchema).min(1).max(10),

@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude tests/**",
+    "test:coverage": "vitest run --coverage --exclude tests/**",
     "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck && npm run test",
     "format": "prettier --write .",
@@ -21,6 +22,7 @@
     "next": "15.5.29",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "server-only": "^0.0.1",
     "zod": "4.6.7"
   },
   "overrides": {
@@ -30,17 +32,18 @@
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",
     "@lhci/cli": "^0.15.1",
-    "@playwright/test": "1.55.1",
-    "@tailwindcss/postcss": "^4",
+    "@playwright/test": "^1.65.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "16.3.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9",
+    "eslint-config-next": "^15.5.29",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "jsdom": "26.1.0",
     "prettier": "3.6.2",
-    "tailwindcss": "^4",
     "typescript": "^5",
     "typescript-eslint": "^8.35.0",
     "vitest": "3.2.4"
